@@ -1,5 +1,5 @@
 {
-  "__comment": "LLM Cost & Tokens. Import into Grafana and pick your Grafana Cloud Prometheus datasource. Metric names assume OTLP->Prometheus naming (dots become underscores; the gen_ai.cost.usd counter becomes gen_ai_cost_usd_total; the gen_ai.client.token.usage histogram becomes gen_ai_client_token_usage_{sum,count}). Panels are intentionally simple starters; refine once the pilot emits real series.",
+  "__comment": "LLM Cost & Tokens. Import into Grafana and pick your Grafana Cloud Prometheus datasource. Metric names assume OTLP->Prometheus naming (dots become underscores). gen_ai.cost.usd becomes gen_ai_cost_usd_total. These panels use the ai-firehose worker's monotonic counters: gen_ai_usage_input_tokens_total, gen_ai_usage_output_tokens_total, gen_ai_calls_total (see the worker's docs/OBSERVABILITY.md). OpenLLMetry-instrumented services instead emit the gen_ai.client.token.usage histogram (gen_ai_client_token_usage_{sum,count}); add histogram panels when those services land.",
   "title": "LLM Cost & Tokens",
   "uid": "fleet-llm-cost",
   "tags": ["fleet", "llm", "cost", "genai"],
@@ -67,8 +67,11 @@
       "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
       "targets": [
         { "refId": "A", "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "legendFormat": "{{gen_ai_token_type}}",
-          "expr": "sum by (gen_ai_token_type) (rate(gen_ai_client_token_usage_sum{deployment_environment=\"$env\"}[5m]))" }
+          "legendFormat": "input",
+          "expr": "sum(rate(gen_ai_usage_input_tokens_total{deployment_environment=\"$env\"}[5m]))" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "legendFormat": "output",
+          "expr": "sum(rate(gen_ai_usage_output_tokens_total{deployment_environment=\"$env\"}[5m]))" }
       ]
     },
     {
@@ -109,7 +112,7 @@
       "options": { "showHeader": true },
       "targets": [
         { "refId": "Calls", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "format": "table", "instant": true,
-          "legendFormat": "calls", "expr": "sum by (service_name) (increase(gen_ai_client_token_usage_count{deployment_environment=\"$env\"}[$__range]))" },
+          "legendFormat": "calls", "expr": "sum by (service_name) (increase(gen_ai_calls_total{deployment_environment=\"$env\"}[$__range]))" },
         { "refId": "Spend", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "format": "table", "instant": true,
           "legendFormat": "usd", "expr": "sum by (service_name) (increase(gen_ai_cost_usd_total{deployment_environment=\"$env\"}[$__range]))" }
       ]
