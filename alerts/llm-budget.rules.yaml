@@ -1,0 +1,28 @@
+# Prometheus-style alerting rules for Grafana Cloud (Mimir).
+# Provision via Grafana Cloud alerting, or adapt to a Grafana-managed rule.
+# These are the early-warning that turns "you already hit the cap" into
+# "you are trending toward it, here is who".
+groups:
+  - name: llm-budget
+    rules:
+      # Rolling 30-day fleet spend crossed the soft threshold. Tune the 120 to
+      # sit a comfortable margin under the hard cap (e.g. $150).
+      - alert: LlmFleetSpendApproachingCap
+        expr: sum(increase(gen_ai_cost_usd_total[30d])) > 120
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fleet LLM spend (30d) over $120, approaching the cap"
+          description: "Open the 'LLM Cost & Tokens' dashboard; the top-operations and by-service panels name the driver."
+
+      # A single service is responsible for an outsized share this week: catch a
+      # runaway agent or a re-embedding loop before it compounds.
+      - alert: LlmServiceSpendSpike
+        expr: sum by (service_name) (increase(gen_ai_cost_usd_total[7d])) > 50
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service_name }} spent over $50 in 7 days"
+          description: "Check whether this is expected high-signal use or a leak (oversized prompts, missing cache, re-embedding unchanged content)."

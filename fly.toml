@@ -1,0 +1,53 @@
+# Fleet OTel collector on Fly.io. Deploy from the repo root so the build context
+# includes alloy/config.alloy:  fly deploy
+# First bring-up:  fly apps create fleet-otel-collector  &&  fly deploy
+# Add Grafana Cloud egress (tomorrow):
+#   fly secrets set GRAFANA_CLOUD_OTLP_ENDPOINT=... GRAFANA_CLOUD_INSTANCE_ID=... GRAFANA_CLOUD_API_TOKEN=...
+app            = "fleet-otel-collector"
+primary_region = "iad"
+
+[build]
+  dockerfile = "alloy/Dockerfile"
+
+[env]
+  # Pre-Cloud no-op egress so the pipeline boots and the debug exporter proves the
+  # path via `fly logs`. A Fly secret of the same name overrides this tomorrow.
+  GRAFANA_CLOUD_OTLP_ENDPOINT = "http://127.0.0.1:4318"
+
+[[vm]]
+  size   = "shared-cpu-1x"
+  memory = "256"
+
+# OTLP / HTTP: the primary, verified ingest path. Public on 443 and 4318 with TLS.
+[[services]]
+  protocol             = "tcp"
+  internal_port        = 4318
+  auto_stop_machines   = "suspend"
+  auto_start_machines  = true
+  min_machines_running = 0
+
+  [[services.ports]]
+    port     = 443
+    handlers = ["tls", "http"]
+  [[services.ports]]
+    port     = 4318
+    handlers = ["tls", "http"]
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout  = "2s"
+
+# OTLP / gRPC ingest.
+[[services]]
+  protocol      = "tcp"
+  internal_port = 4317
+  [[services.ports]]
+    port     = 4317
+    handlers = ["tls"]
+
+# Faro RUM ingest from browsers.
+[[services]]
+  protocol      = "tcp"
+  internal_port = 12347
+  [[services.ports]]
+    port     = 12347
+    handlers = ["tls", "http"]

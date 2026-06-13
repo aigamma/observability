@@ -1,0 +1,118 @@
+{
+  "__comment": "LLM Cost & Tokens. Import into Grafana and pick your Grafana Cloud Prometheus datasource. Metric names assume OTLP->Prometheus naming (dots become underscores; the gen_ai.cost.usd counter becomes gen_ai_cost_usd_total; the gen_ai.client.token.usage histogram becomes gen_ai_client_token_usage_{sum,count}). Panels are intentionally simple starters; refine once the pilot emits real series.",
+  "title": "LLM Cost & Tokens",
+  "uid": "fleet-llm-cost",
+  "tags": ["fleet", "llm", "cost", "genai"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-30d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Prometheus",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0
+      },
+      {
+        "name": "env",
+        "label": "Environment",
+        "type": "custom",
+        "query": "prod,dev",
+        "current": { "text": "prod", "value": "prod" },
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Spend, month to date (USD)",
+      "description": "Sum of derived cost across the fleet over the dashboard range. Watch this against your monthly cap; the alert in alerts/ warns before it.",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(increase(gen_ai_cost_usd_total{deployment_environment=\"$env\"}[$__range]))" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Hourly spend by service (USD)",
+      "description": "Where the money is. Trailing 1h cost increase per service.",
+      "gridPos": { "h": 6, "w": 18, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "custom": { "drawStyle": "bars", "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "legendFormat": "{{service_name}}",
+          "expr": "sum by (service_name) (increase(gen_ai_cost_usd_total{deployment_environment=\"$env\"}[1h]))" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Tokens per second: input vs output",
+      "description": "Output tokens cost several times more than input. This split shows where to optimize (smaller prompts vs shorter completions).",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "legendFormat": "{{gen_ai_token_type}}",
+          "expr": "sum by (gen_ai_token_type) (rate(gen_ai_client_token_usage_sum{deployment_environment=\"$env\"}[5m]))" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Hourly spend by model (USD)",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "legendFormat": "{{gen_ai_request_model}}",
+          "expr": "sum by (gen_ai_request_model) (increase(gen_ai_cost_usd_total{deployment_environment=\"$env\"}[1h]))" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Top operations by spend (range)",
+      "description": "The direct 'where are tokens leaking' view: most expensive operations across the fleet.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "options": { "showHeader": true },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "format": "table", "instant": true,
+          "expr": "topk(10, sum by (service_name, gen_ai_operation_name, gen_ai_request_model) (increase(gen_ai_cost_usd_total{deployment_environment=\"$env\"}[$__range])))" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Per-service activity (retire/throttle decisions)",
+      "description": "Separate 'idle but expensive' from 'rarely used but high signal'. Request volume and spend per service over the range.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": { "showHeader": true },
+      "targets": [
+        { "refId": "Calls", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "format": "table", "instant": true,
+          "legendFormat": "calls", "expr": "sum by (service_name) (increase(gen_ai_client_token_usage_count{deployment_environment=\"$env\"}[$__range]))" },
+        { "refId": "Spend", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "format": "table", "instant": true,
+          "legendFormat": "usd", "expr": "sum by (service_name) (increase(gen_ai_cost_usd_total{deployment_environment=\"$env\"}[$__range]))" }
+      ]
+    }
+  ]
+}

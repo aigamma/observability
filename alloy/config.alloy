@@ -1,0 +1,177 @@
+// =============================================================================
+// Fleet OpenTelemetry Collector  (Grafana Alloy, an OTel Collector distribution)
+//
+// One spine for the whole fleet. Every backend (Node, Rust, Deno, Python, the
+// local LM Studio / Ollama lab) pushes OTLP here; every browser pushes Faro RUM
+// here. The spine normalizes, REDACTS prompt/PII text, samples traces, then
+// ships a single OTLP/HTTP egress to Grafana Cloud.
+//
+//   otlp(grpc 4317 / http 4318) ─┐
+//   faro RUM (12347) traces ──────┼─▶ memory_limiter ─▶ attributes ─▶ transform(redact)
+//   faro RUM (12347) logs ─(loki)─┘                                        │
+//                                            metrics,logs ────────────────┤
+//                                                                          ▼
+//                                            traces ─▶ tail_sampling ─▶ batch ─▶ otlphttp → Grafana Cloud
+//                                                                          └────────────▶ debug (fly logs: verification oracle)
+//
+// Secrets come from the environment (Fly secrets), never from this file.
+// See ../.env.example and ../README.md.
+// =============================================================================
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// ---- Receivers --------------------------------------------------------------
+
+// Backend services and the local model lab speak OTLP.
+otelcol.receiver.otlp "in" {
+  grpc { endpoint = "0.0.0.0:4317" }
+  http { endpoint = "0.0.0.0:4318" }
+
+  output {
+    metrics = [otelcol.processor.memory_limiter.guard.input]
+    logs    = [otelcol.processor.memory_limiter.guard.input]
+    traces  = [otelcol.processor.memory_limiter.guard.input]
+  }
+}
+
+// Browsers speak Faro (Grafana's RUM wire format): web vitals, JS errors, and
+// traces whose traceparent links back to the backend spans of the same request.
+faro.receiver "rum" {
+  server {
+    listen_address       = "0.0.0.0"
+    listen_port          = 12347
+    cors_allowed_origins  = ["*"]   // TODO(hardening): pin to the site origins.
+  }
+  output {
+    traces = [otelcol.processor.memory_limiter.guard.input]
+    logs   = [otelcol.receiver.loki.faro_logs.receiver]
+  }
+}
+
+// Faro emits logs in Loki format; bridge them into the OTel pipeline so the
+// whole fleet egresses through one OTLP exporter instead of two code paths.
+otelcol.receiver.loki "faro_logs" {
+  output {
+    logs = [otelcol.processor.memory_limiter.guard.input]
+  }
+}
+
+// ---- Processors -------------------------------------------------------------
+
+// Backpressure guard sized for the 256MB Fly machine: drop rather than OOM.
+otelcol.processor.memory_limiter "guard" {
+  check_interval = "1s"
+  limit          = "180MiB"
+  spike_limit    = "40MiB"
+
+  output {
+    metrics = [otelcol.processor.attributes.tag.input]
+    logs    = [otelcol.processor.attributes.tag.input]
+    traces  = [otelcol.processor.attributes.tag.input]
+  }
+}
+
+// Stamp collector identity so a dashboard can tell where data was shaped.
+// (Each service sets its own service.name + deployment.environment.)
+otelcol.processor.attributes "tag" {
+  action {
+    key    = "collector.name"
+    value  = "fleet-alloy"
+    action = "upsert"
+  }
+
+  output {
+    metrics = [otelcol.processor.transform.govern.input]
+    logs    = [otelcol.processor.transform.govern.input]
+    traces  = [otelcol.processor.transform.govern.input]
+  }
+}
+
+// GOVERNANCE: strip prompt/completion text and any I/O payload keys BEFORE
+// anything leaves the collector. Token counts and derived cost survive; the raw
+// text a model saw or produced never does. This is the privacy + cardinality +
+// storage-cost lesson enforced in one place, not trusted to each app.
+otelcol.processor.transform "govern" {
+  error_mode = "ignore"
+
+  trace_statements {
+    context = "span"
+    statements = [
+      `delete_matching_keys(attributes, "gen_ai\\.prompt.*")`,
+      `delete_matching_keys(attributes, "gen_ai\\.completion.*")`,
+      `delete_matching_keys(attributes, "traceloop\\.entity\\.(input|output).*")`,
+      `delete_key(attributes, "gen_ai.prompt")`,
+      `delete_key(attributes, "gen_ai.completion")`,
+    ]
+  }
+
+  // metrics + logs skip trace sampling; only traces are sampled.
+  output {
+    metrics = [otelcol.processor.batch.out.input]
+    logs    = [otelcol.processor.batch.out.input]
+    traces  = [otelcol.processor.tail_sampling.sample.input]
+  }
+}
+
+// Keep every error and every slow trace; sample a fraction of the rest. Policies
+// are OR'd, so an error trace is always kept even if probabilistic drops it.
+otelcol.processor.tail_sampling "sample" {
+  decision_wait = "5s"
+
+  policy {
+    name = "keep-errors"
+    type = "status_code"
+    status_code { status_codes = ["ERROR"] }
+  }
+  policy {
+    name = "keep-slow"
+    type = "latency"
+    latency { threshold_ms = 1000 }
+  }
+  policy {
+    name = "sample-the-rest"
+    type = "probabilistic"
+    probabilistic { sampling_percentage = 20 }
+  }
+
+  output {
+    traces = [otelcol.processor.batch.out.input]
+  }
+}
+
+// Batch for egress efficiency.
+otelcol.processor.batch "out" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.grafana.input, otelcol.exporter.debug.verify.input]
+    logs    = [otelcol.exporter.otlphttp.grafana.input, otelcol.exporter.debug.verify.input]
+    traces  = [otelcol.exporter.otlphttp.grafana.input, otelcol.exporter.debug.verify.input]
+  }
+}
+
+// ---- Exporters --------------------------------------------------------------
+
+// Primary egress: Grafana Cloud (Mimir/Loki/Tempo) over one OTLP/HTTP endpoint.
+// Until the Grafana Cloud secrets are set, GRAFANA_CLOUD_OTLP_ENDPOINT defaults
+// (in fly.toml) to a local no-op so the pipeline boots and the debug exporter
+// below proves receive -> process -> export end to end.
+otelcol.exporter.otlphttp "grafana" {
+  client {
+    endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
+    auth     = otelcol.auth.basic.grafana.handler
+  }
+}
+
+otelcol.auth.basic "grafana" {
+  username = sys.env("GRAFANA_CLOUD_INSTANCE_ID")
+  password = sys.env("GRAFANA_CLOUD_API_TOKEN")
+}
+
+// Verification oracle: prints every span/metric/log it receives to stdout, which
+// surfaces in `fly logs`. This is how Wave 0 is proven without a Cloud account,
+// and how you watch redaction actually happen (the prompt attribute is gone).
+otelcol.exporter.debug "verify" {
+  verbosity = "detailed"
+}

@@ -1,0 +1,16 @@
+# Secrets: never commit. Real values live in Fly secrets / each site's env.
+.env
+.env.local
+*.local
+
+# Node (used only by the synthetic-signal helper and dashboards tooling)
+node_modules/
+
+# Alloy local data dir
+alloy/data/
+data/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
