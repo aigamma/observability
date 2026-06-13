@@ -11,8 +11,13 @@ primary_region = "iad"
 
 [env]
   # Pre-Cloud no-op egress so the pipeline boots and the debug exporter proves the
-  # path via `fly logs`. A Fly secret of the same name overrides this tomorrow.
-  GRAFANA_CLOUD_OTLP_ENDPOINT = "http://127.0.0.1:4318"
+  # path via `fly logs`. Port 4999 is closed (fast connection-refused, and avoids a
+  # self-loop into our own :4318 receiver). Placeholder auth lets otelcol.auth.basic
+  # build. Tomorrow, `fly secrets set` of these same names overrides all three for
+  # real Grafana Cloud egress, with no config edit.
+  GRAFANA_CLOUD_OTLP_ENDPOINT = "http://127.0.0.1:4999"
+  GRAFANA_CLOUD_INSTANCE_ID   = "placeholder"
+  GRAFANA_CLOUD_API_TOKEN     = "placeholder"
 
 [[vm]]
   size   = "shared-cpu-1x"
@@ -24,7 +29,7 @@ primary_region = "iad"
   internal_port        = 4318
   auto_stop_machines   = "suspend"
   auto_start_machines  = true
-  min_machines_running = 0
+  min_machines_running = 1
 
   [[services.ports]]
     port     = 443

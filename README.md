@@ -70,6 +70,8 @@ Prereqs: `flyctl` authenticated. From the repo root:
 
 ```bash
 fly apps create fleet-otel-collector      # one time
+fly ips allocate-v4 --shared              # one time: routes 443 -> 4318 via SNI (free)
+fly ips allocate-v6                        # one time
 fly deploy                                 # builds alloy/Dockerfile via Fly's remote builder
 ```
 
@@ -122,7 +124,7 @@ worker, Browser/Faro, Rust, Supabase/Deno, Python) are in
 
 | Site | Runtime | State |
 |---|---|---|
-| (spine) `fleet-otel-collector` | Grafana Alloy on Fly | Built; Cloud egress pending account |
+| (spine) `fleet-otel-collector` | Grafana Alloy on Fly | Verified on Fly (OTLP ingest + token survival + prompt redaction proven via debug exporter); Cloud egress pending account |
 | ai-firehose.com | Node worker + Netlify fn + React | Pilot (Wave 1) |
 | aigamma.com (+ about) | Netlify fns + Supabase + React | Wave 2 |
 | worldthought.com | Netlify fns + React | Wave 3 |
