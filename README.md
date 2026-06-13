@@ -125,12 +125,14 @@ worker, Browser/Faro, Rust, Supabase/Deno, Python) are in
 | Site | Runtime | State |
 |---|---|---|
 | (spine) `fleet-otel-collector` | Grafana Alloy on Fly | Verified on Fly (OTLP ingest + token survival + prompt redaction proven via debug exporter); Cloud egress pending account |
-| ai-firehose.com | Node worker + Netlify fn + React | Pilot (Wave 1) |
-| aigamma.com (+ about) | Netlify fns + Supabase + React | Wave 2 |
-| worldthought.com | Netlify fns + React | Wave 3 |
-| learnrust.ai | Rust on Fly | Wave 4 |
-| selectsectors.com | Rust + Netlify | Wave 4 |
-| spokenhistory.org | Netlify fns + RAG + MCP | Wave 5 (cloned) |
+| ai-firehose.com | Node worker + Netlify fn + React | Worker LLM cost instrumented, [PR #1](https://github.com/aigamma/ai-firehose.com/pull/1) (CI green). Faro RUM + retrieve fn pending |
+| aigamma.com (+ about) | Netlify fns + Supabase + React | Chat instrumented, [PR #1](https://github.com/aigamma/aigamma.com/pull/1). narrate + ingest pending |
+| worldthought.com | Netlify fns + React | Chat instrumented, [PR #2](https://github.com/aigamma/worldthought.com/pull/2) |
+| learnrust.ai | Rust on Fly | Pending (RED + runtime via tracing-opentelemetry) |
+| selectsectors.com | Rust + Netlify | Pending |
+| spokenhistory.org | Netlify fns + RAG + MCP | Cloned; pending |
 | leaderlogic.org / robotlogic.org | unknown | Blocked: no repo located |
+
+All four services above (worker, aigamma, worldthought, plus the synthetic verifier) have had real telemetry confirmed arriving at the collector with correct `gen_ai.*` attributes and cost. The collector's Grafana Cloud egress is the one remaining gap, pending the account.
 
 [Grafana Alloy]: https://grafana.com/docs/alloy/latest/
