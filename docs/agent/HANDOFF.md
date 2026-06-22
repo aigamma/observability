@@ -109,7 +109,13 @@ is a complete, correct stack he can study.
 ## Next undone step
 → "Scaffold everything" continues (Eric authorized all infra spend + services-on; only the
   Anthropic limit stays his to raise):
-  - **spokenhistory.org** — instrument (RAG + MCP); likely needs fresh otel + wiring.
+  - **spokenhistory.org** (branch `master`, no existing instrumentation) — cost is
+    **Voyage only** (cheap, not a suspect): `netlify/functions/retrieve.mjs` embeds the
+    query via voyage-3 + reranks via rerank-2 (Pinecone retrieval, NO Anthropic). To wire:
+    add an `otel.mjs` (process.env + bearer, like ai-firehose's) and wrap the two Voyage
+    fetches with `recordLlm(system='voyage', op='embed'|'rerank')`; set Netlify env; deploy
+    (Netlify project name unknown — `netlify link` to find). Deeper/bigger cost: Firebase
+    `functions/` (the ingest/transcription pipeline — Whisper/embeddings) + `mcp-server/`.
   - **learnrust.ai** — Rust on Fly; needs the Rust OTel recipe (tracing-opentelemetry),
     different from the JS sites.
   - Real cost from **worldthought** (chat) + **ai-firehose worker** (ingestion) lands once
