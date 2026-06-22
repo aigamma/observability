@@ -139,6 +139,20 @@ otelcol.processor.transform "govern" {
     ]
   }
 
+  // Logs get the same prompt/PII strip as spans (defense in depth): the Faro->Loki
+  // bridge and any future service can carry text in a log record, and the collector is
+  // the single enforcement point. Mirrors the trace deletes above.
+  log_statements {
+    context = "log"
+    statements = [
+      `delete_matching_keys(log.attributes, "gen_ai\\.prompt.*")`,
+      `delete_matching_keys(log.attributes, "gen_ai\\.completion.*")`,
+      `delete_matching_keys(log.attributes, "traceloop\\.entity\\.(input|output).*")`,
+      `delete_key(log.attributes, "gen_ai.prompt")`,
+      `delete_key(log.attributes, "gen_ai.completion")`,
+    ]
+  }
+
   // metrics + logs skip trace sampling; only traces are sampled.
   output {
     metrics = [otelcol.processor.batch.out.input]
