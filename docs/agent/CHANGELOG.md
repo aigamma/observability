@@ -29,5 +29,13 @@ factual (what changed, why, the verifying evidence, the commit). Newest first.
   exactly `gen_ai_{cost_usd,usage_input_tokens,usage_output_tokens,calls}_total`, the
   metrics the dashboard's panels query.
 
-### In progress
-- Onboarding worldthought.com (~2,200 chatbots) — same playbook.
+- **worldthought.com instrumented** (~2,200 chatbots) — cherry-picked the stale
+  instrumentation onto current `main` (which was 43 commits ahead of the old
+  `observability` branch), fixed `otel.mjs` bearer auth (`5c8efde`), set Netlify OTLP
+  env, consolidated to a single linear `main` (deleted `observability` + the
+  already-merged `june-2026-expansion`, local+remote). Telemetry path verified **$0**
+  (worldthought-verify span arrived authenticated). **Production deploy DEFERRED**:
+  worldthought's build runs `scripts/generate-graph.mjs` which reads Pinecone
+  (metered), so per the spend rule it was pushed with `[skip ci]` (`03015c9`) — Eric
+  deploys when ready (it's the normal build cost). NOTE: worldthought chat spends on
+  Voyage + Pinecone + Anthropic, so it needs caps on all three, not just Anthropic.

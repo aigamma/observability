@@ -75,18 +75,32 @@ now: get a full-stack proof of concept live, then troubleshoot the bleed.
   monthly limit isn't fully maxed. This is the safe per-site verification pattern.
 
 ## What's left for ERIC (needs his login / spend — do NOT do these for him)
-- **Raise Anthropic monthly limit +$50** — the measured budget that turns the pipes
-  back on under instrumentation. Do this LAST, after telemetry is confirmed.
-- Set provider spend caps first (COST-CONTROLS Layer 0): Anthropic per-workspace,
-  OpenAI prepaid balance + project budget.
-- Grafana: set billing alerts; import `dashboards/llm-cost.json`; arm
-  `scripts/grafana-usage-check.sh` with a read-scoped token.
+- **Deploy worldthought.com** (a normal Netlify deploy / push without `[skip ci]`).
+  Its build reads Pinecone — that's the normal build cost. After it deploys, its
+  chatbots emit telemetry like aigamma's already does.
+- **Set provider spend caps FIRST** (COST-CONTROLS Layer 0), before raising anything:
+  Anthropic per-workspace; OpenAI prepaid balance + budget; **and for worldthought,
+  Voyage + Pinecone too** (its RAG chat spends on all three).
+- **Raise the Anthropic monthly limit +$50** — the measured budget that turns the
+  pipes back on under instrumentation. Do this LAST, after caps + telemetry confirmed.
+- Grafana: set billing alerts; import `dashboards/llm-cost.json` (its panels query
+  `gen_ai_{cost_usd,usage_input_tokens,usage_output_tokens,calls}_total`, exactly what
+  aigamma + worldthought emit — verified); arm `scripts/grafana-usage-check.sh` with a
+  read token.
 
 ## Done this session
 - **aigamma.com** — branches consolidated to linear `main` (zero branches), otel.mjs
-  bearer fix (`62f7613`), Netlify OTLP env set, deployed (state=ready, HTTP 200),
-  telemetry path verified $0. Awaiting Eric's Anthropic limit raise to see real cost.
+  bearer fix (`62f7613`), Netlify OTLP env set, **deployed** (state=ready, HTTP 200),
+  telemetry path verified $0. LIVE + instrumented. Anthropic-only, so $0 while the
+  limit is maxed. Awaiting Eric's limit raise to see real cost.
+- **worldthought.com** — instrumented on linear `main` (zero branches), otel.mjs bearer
+  fix, Netlify OTLP env set, telemetry path verified $0 (`03015c9`). **NOT deployed**:
+  its build reads Pinecone (spend), pushed `[skip ci]`. Eric deploys when ready. Its
+  chat spends on Voyage + Pinecone + Anthropic — cap all three.
 
 ## Next undone step
-→ Onboard **worldthought.com** (~2,200 chatbots) per the playbook, then write Eric's
-  evening summary. (ai-firehose/spokenhistory = raw RAG, skip; selectsectors = no DNS.)
+→ Nothing blocking that is $0/safe. Remaining work is Eric's (below) or needs his OK
+  (deploy worldthought's Pinecone-reading build). Optional next agent task: a
+  settings.json PreToolUse hook that hard-blocks branch-creating git verbs (Eric wants
+  "never again" — offered, not yet built). ai-firehose/spokenhistory = raw RAG (skip);
+  selectsectors = no DNS.
