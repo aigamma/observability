@@ -96,7 +96,10 @@ That is the only change needed to light up real storage and dashboards.
 ## Verify end to end
 
 ```bash
-COLLECTOR_URL=https://fleet-otel-collector.fly.dev scripts/send-synthetic.sh
+# Ingest is bearer-authed: without ALLOY_INGEST_BEARER every POST returns 401
+# (that IS the auth working). Set it to push successfully and prove redaction.
+ALLOY_INGEST_BEARER=<your ingest token> \
+  COLLECTOR_URL=https://fleet-otel-collector.fly.dev scripts/send-synthetic.sh
 fly logs -a fleet-otel-collector
 ```
 

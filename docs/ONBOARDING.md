@@ -16,7 +16,7 @@ The collector endpoints (replace host once the Fly app name is final):
 | Signal | URL |
 |---|---|
 | OTLP/HTTP (backends) | `https://fleet-otel-collector.fly.dev` (SDK appends `/v1/...`) |
-| Faro RUM (browsers) | `https://fleet-otel-collector.fly.dev:12347/collect` |
+| Faro RUM (browsers) | _deferred — public port `12347` is closed until browser onboarding (see Hardening below)_ |
 
 Set per service: `OTEL_SERVICE_NAME`, `DEPLOY_ENV` (`prod`/`dev`),
 `OTEL_EXPORTER_OTLP_ENDPOINT` (the OTLP/HTTP URL above), and
