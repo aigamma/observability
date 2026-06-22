@@ -20,7 +20,14 @@ factual (what changed, why, the verifying evidence, the commit). Newest first.
 - **Spine brought up on Fly** earlier in the week (Grafana Alloy collector, dashboards,
   alerts, runbook) — see git log `27d1f96`..`ab9731c`.
 
+- **aigamma.com onboarded** — consolidated `observability`+`site-quality` into a
+  single linear `main` (both branches deleted local+remote), fixed `otel.mjs` to send
+  the ingest bearer header (`62f7613`), set the 4 OTLP env vars on Netlify, deployed
+  (Netlify deploy `62f7613` state=ready, site HTTP 200). Telemetry path verified **$0**
+  by calling `recordLlm` directly with dummy tokens (no Anthropic call): `aigamma-verify`
+  cost + token + call metrics arrived **authenticated** at the collector. aigamma emits
+  exactly `gen_ai_{cost_usd,usage_input_tokens,usage_output_tokens,calls}_total`, the
+  metrics the dashboard's panels query.
+
 ### In progress
-- Onboarding aigamma.com (Eric's prime leak suspect): consolidate branches → main,
-  fix the otel.mjs bearer header, set Netlify env, deploy, verify. All $0 (Anthropic
-  maxed). worldthought.com next, same playbook.
+- Onboarding worldthought.com (~2,200 chatbots) — same playbook.

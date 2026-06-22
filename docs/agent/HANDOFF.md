@@ -67,7 +67,12 @@ now: get a full-stack proof of concept live, then troubleshoot the bleed.
   selectsectors.com (no DNS yet).
 
 ## Decisions guessed autonomously (Eric said "guess + document, change later")
-- (filled in as made — see CHANGELOG.md)
+- Shipped `site-quality`'s 8 cosmetic commits to `main` along with the telemetry —
+  the no-branches mandate requires consolidating it, and `vite build` passed (exit 0).
+- `OTEL_SERVICE_NAME=aigamma` (the otel.mjs default).
+- Verified aigamma's telemetry path by calling `recordLlm` directly with dummy token
+  counts ($0), NOT by triggering a real chat — avoids any Anthropic spend in case the
+  monthly limit isn't fully maxed. This is the safe per-site verification pattern.
 
 ## What's left for ERIC (needs his login / spend — do NOT do these for him)
 - **Raise Anthropic monthly limit +$50** — the measured budget that turns the pipes
@@ -77,5 +82,11 @@ now: get a full-stack proof of concept live, then troubleshoot the bleed.
 - Grafana: set billing alerts; import `dashboards/llm-cost.json`; arm
   `scripts/grafana-usage-check.sh` with a read-scoped token.
 
+## Done this session
+- **aigamma.com** — branches consolidated to linear `main` (zero branches), otel.mjs
+  bearer fix (`62f7613`), Netlify OTLP env set, deployed (state=ready, HTTP 200),
+  telemetry path verified $0. Awaiting Eric's Anthropic limit raise to see real cost.
+
 ## Next undone step
-→ Onboard aigamma.com per the playbook (in progress this session).
+→ Onboard **worldthought.com** (~2,200 chatbots) per the playbook, then write Eric's
+  evening summary. (ai-firehose/spokenhistory = raw RAG, skip; selectsectors = no DNS.)
