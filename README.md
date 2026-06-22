@@ -106,11 +106,16 @@ redaction in one shot.
 ## Security posture
 
 - Secrets live only as Fly secrets, never in this repo (`.gitignore` enforces).
-- **Incoming-ingest auth is a hardening step, not yet enforced.** During first
-  bring-up the machine is stopped when not actively being verified, so there is
-  no standing open endpoint. Before the collector runs continuously, add a
-  bearer-token authenticator to the receivers and set `ALLOY_INGEST_BEARER`
-  (see `docs/ONBOARDING.md`).
+- **Incoming-ingest auth is enforced.** The OTLP receivers require
+  `Authorization: Bearer <ALLOY_INGEST_BEARER>`; unauthenticated pushes are
+  rejected with 401 (proven live: a tokenless POST returns 401, a token-bearing
+  POST returns 200), so the endpoint can't be flooded into your paid Grafana
+  Cloud usage. Each sending service sets
+  `OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer <token>` (see `docs/ONBOARDING.md`).
+- **The Faro/browser RUM port is not publicly exposed.** A browser can't hold a
+  server secret, so rather than leave an unauthenticated push path into paid
+  storage, the public `12347` route is closed (`fly.toml`) until the first
+  browser app onboards, at which point it returns behind pinned origins.
 
 ## Onboarding a site
 

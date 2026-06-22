@@ -25,10 +25,26 @@ logging {
 
 // ---- Receivers --------------------------------------------------------------
 
+// Ingest authentication. Every backend must present
+// `Authorization: Bearer <ALLOY_INGEST_BEARER>` to push OTLP; unauthenticated
+// pushes are rejected with 401. On a paid Grafana Cloud plan an open ingest is a
+// billable-flood vector, so this is the wallet lock, not just hygiene. (The Faro
+// RUM port is not publicly routed yet — a browser can't hold a secret — see
+// fly.toml; it returns with pinned controls when the first browser app onboards.)
+otelcol.auth.bearer "ingest" {
+  token = sys.env("ALLOY_INGEST_BEARER")
+}
+
 // Backend services and the local model lab speak OTLP.
 otelcol.receiver.otlp "in" {
-  grpc { endpoint = "0.0.0.0:4317" }
-  http { endpoint = "0.0.0.0:4318" }
+  grpc {
+    endpoint = "0.0.0.0:4317"
+    auth     = otelcol.auth.bearer.ingest.handler
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+    auth     = otelcol.auth.bearer.ingest.handler
+  }
 
   output {
     metrics = [otelcol.processor.memory_limiter.guard.input]

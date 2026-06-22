@@ -10,6 +10,13 @@
 set -u
 
 URL="${1:-${COLLECTOR_URL:-https://fleet-otel-collector.fly.dev}}"
+
+# Ingest is bearer-protected: if ALLOY_INGEST_BEARER is set, present it. Leave it
+# unset to send unauthenticated — e.g. to prove the collector now answers 401.
+AUTH=()
+if [ -n "${ALLOY_INGEST_BEARER:-}" ]; then
+  AUTH=(-H "Authorization: Bearer ${ALLOY_INGEST_BEARER}")
+fi
 NOW_NS=$(( $(date +%s) * 1000000000 ))
 # 1.5s duration plus an error status (set below) makes the collector's
 # tail-sampling keep-errors/keep-slow policies always retain this verification
@@ -26,6 +33,7 @@ echo
 
 echo "== POST /v1/traces (LLM span with a secret prompt that must be redacted) =="
 curl -s -o /dev/null -w "  http %{http_code}\n" -X POST "$URL/v1/traces" \
+  ${AUTH[@]+"${AUTH[@]}"} \
   -H 'Content-Type: application/json' \
   --data @- <<JSON
 { "resourceSpans": [ { "resource": { "attributes": [
@@ -47,6 +55,7 @@ JSON
 
 echo "== POST /v1/metrics (a derived cost sample) =="
 curl -s -o /dev/null -w "  http %{http_code}\n" -X POST "$URL/v1/metrics" \
+  ${AUTH[@]+"${AUTH[@]}"} \
   -H 'Content-Type: application/json' \
   --data @- <<JSON
 { "resourceMetrics": [ { "resource": { "attributes": [
@@ -62,6 +71,7 @@ JSON
 
 echo "== POST /v1/logs =="
 curl -s -o /dev/null -w "  http %{http_code}\n" -X POST "$URL/v1/logs" \
+  ${AUTH[@]+"${AUTH[@]}"} \
   -H 'Content-Type: application/json' \
   --data @- <<JSON
 { "resourceLogs": [ { "resource": { "attributes": [

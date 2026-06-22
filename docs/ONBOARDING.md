@@ -18,8 +18,10 @@ The collector endpoints (replace host once the Fly app name is final):
 | OTLP/HTTP (backends) | `https://fleet-otel-collector.fly.dev` (SDK appends `/v1/...`) |
 | Faro RUM (browsers) | `https://fleet-otel-collector.fly.dev:12347/collect` |
 
-Set per service: `OTEL_SERVICE_NAME`, `DEPLOY_ENV` (`prod`/`dev`), and
-`OTEL_EXPORTER_OTLP_ENDPOINT` (the OTLP/HTTP URL above).
+Set per service: `OTEL_SERVICE_NAME`, `DEPLOY_ENV` (`prod`/`dev`),
+`OTEL_EXPORTER_OTLP_ENDPOINT` (the OTLP/HTTP URL above), and
+`OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer <ALLOY_INGEST_BEARER>` — ingest is
+authenticated, so a service without the bearer token gets 401 (see Hardening below).
 
 ---
 
@@ -183,10 +185,14 @@ gated on the endpoint env. Auto-instruments the OpenAI/Anthropic clients.
 
 ---
 
-## Hardening: ingest auth (before the collector runs continuously)
+## Hardening: ingest auth (active)
 
-Add a server-side bearer authenticator to the OTLP and Faro receivers in
-`alloy/config.alloy`, set `ALLOY_INGEST_BEARER` as a Fly secret, and have each
-service send `Authorization: Bearer <token>` (OTel: `OTEL_EXPORTER_OTLP_HEADERS`;
-Faro: the `apiKey`/headers option). Until then, verify with the machine stopped
-when idle so there is no standing open endpoint.
+The OTLP receivers require a bearer token. `ALLOY_INGEST_BEARER` is set as a Fly
+secret on the collector, and every sending service must present it as
+`OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer <token>` (the Node/OTel SDKs read
+that env var directly). A push without it returns 401, so an open endpoint can't be
+flooded into paid Grafana Cloud usage.
+
+The browser/Faro port (`12347`) is not publicly routed (`fly.toml`): a browser
+can't keep a server secret, so RUM onboarding waits until the port can be fronted
+with pinned origins and a small push proxy that injects the token server-side.
