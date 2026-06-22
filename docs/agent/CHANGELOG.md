@@ -5,6 +5,13 @@ factual (what changed, why, the verifying evidence, the commit). Newest first.
 
 ## 2026-06-22
 
+- **worldthought.com DEPLOYED** (`66752b4`) — Eric returned, authorized all infra/build
+  spend, so the `[skip ci]` hold was removed and it deployed (Netlify state=ready). Both
+  prime suspects (aigamma + worldthought) now live + instrumented.
+- **Statusline task started** — Eric lost an all-day Claude Code session when the agent
+  panel crashed PowerShell on a left-arrow; wants a GLOBAL statusline showing the active-
+  agent count. Researching the reliable mechanism (does the statusLine stdin expose it,
+  or derive from transcript?) before configuring + testing.
 - **Agent harness created** — `docs/agent/HANDOFF.md` (living state + per-site
   onboarding playbook) and this changelog. Strengthened global `CLAUDE.md` with an
   operational "consolidate branches on sight; never create one" rule (Eric's request).

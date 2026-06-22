@@ -94,9 +94,17 @@ now: get a full-stack proof of concept live, then troubleshoot the bleed.
   telemetry path verified $0. LIVE + instrumented. Anthropic-only, so $0 while the
   limit is maxed. Awaiting Eric's limit raise to see real cost.
 - **worldthought.com** — instrumented on linear `main` (zero branches), otel.mjs bearer
-  fix, Netlify OTLP env set, telemetry path verified $0 (`03015c9`). **NOT deployed**:
-  its build reads Pinecone (spend), pushed `[skip ci]`. Eric deploys when ready. Its
-  chat spends on Voyage + Pinecone + Anthropic — cap all three.
+  fix, Netlify OTLP env set, **DEPLOYED** (`66752b4`, Netlify state=ready). Eric returned
+  and authorized ALL infra/build spend (Pinecone/Voyage/Supabase/Qdrant/Fly/Netlify),
+  so the earlier `[skip ci]` hold was lifted. Both prime chatbot suspects now live +
+  instrumented. Its chat spends on Voyage + Pinecone + Anthropic.
+
+**Recalibration (2026-06-22 evening):** Eric explicitly removed all infra/build-cost
+caution ("don't worry about Pinecone/Voyage/Supabase/Qdrant/fly.io/Netlify build
+credits... I have tens of thousands budgeted"). Deploy freely. The ONLY thing not to do
+unilaterally is raise his **Anthropic** monthly limit — that's his to flip when he wants
+to watch the bleed in real time. He's pursuing a principal-AI-architect role; the goal
+is a complete, correct stack he can study.
 
 ## Next undone step
 → Nothing blocking that is $0/safe. Remaining work is Eric's (below) or needs his OK
