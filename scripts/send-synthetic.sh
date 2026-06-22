@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
-# Send one synthetic trace + metric + log over OTLP/HTTP to the collector, to
-# verify the Wave 0 spine end to end. The trace carries a FAKE secret prompt
-# attribute (gen_ai.prompt.0.content); after it passes through the collector's
-# redaction processor, `fly logs` should show the span WITHOUT that attribute.
+# Send one synthetic trace + metric + log over OTLP/HTTP to the collector to
+# verify the spine end to end, and double as a schedulable CANARY against Grafana.
+#
+# The trace carries a FAKE secret prompt (gen_ai.prompt.0.content); after the
+# collector's redaction processor, `fly logs` shows the span WITHOUT it.
+#
+# Exit code: 0 if every signal was accepted (2xx), non-zero otherwise — so a
+# scheduled run alerts when the pipeline is broken. (Run WITH ALLOY_INGEST_BEARER
+# for the canary; omit it to manually prove the 401 — that run exits non-zero,
+# which is expected, since the whole point of that run is the rejection.)
 #
 # Usage:
-#   COLLECTOR_URL=https://fleet-otel-collector.fly.dev scripts/send-synthetic.sh
+#   ALLOY_INGEST_BEARER=... COLLECTOR_URL=https://fleet-otel-collector.fly.dev scripts/send-synthetic.sh
 #   scripts/send-synthetic.sh https://fleet-otel-collector.fly.dev
 set -u
 
@@ -28,14 +34,21 @@ START_NS=$(( NOW_NS - 1500000000 ))
 TRACE_ID=$(openssl rand -hex 16 2>/dev/null || head -c16 /dev/urandom | od -An -tx1 | tr -d ' \n')
 SPAN_ID=$(openssl rand -hex 8 2>/dev/null || head -c8 /dev/urandom | od -An -tx1 | tr -d ' \n')
 
+FAIL=0
+# post <path> ; OTLP JSON body on stdin. Prints the HTTP code; flags non-2xx.
+post() {
+  local code
+  code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$URL$1" \
+    ${AUTH[@]+"${AUTH[@]}"} -H 'Content-Type: application/json' --data @-)
+  echo "  http $code"
+  case "$code" in 2*) ;; *) FAIL=1 ;; esac
+}
+
 echo "Target: $URL"
 echo
 
 echo "== POST /v1/traces (LLM span with a secret prompt that must be redacted) =="
-curl -s -o /dev/null -w "  http %{http_code}\n" -X POST "$URL/v1/traces" \
-  ${AUTH[@]+"${AUTH[@]}"} \
-  -H 'Content-Type: application/json' \
-  --data @- <<JSON
+post /v1/traces <<JSON
 { "resourceSpans": [ { "resource": { "attributes": [
   { "key": "service.name", "value": { "stringValue": "synthetic-verify" } },
   { "key": "deployment.environment", "value": { "stringValue": "verify" } } ] },
@@ -54,10 +67,7 @@ curl -s -o /dev/null -w "  http %{http_code}\n" -X POST "$URL/v1/traces" \
 JSON
 
 echo "== POST /v1/metrics (a derived cost sample) =="
-curl -s -o /dev/null -w "  http %{http_code}\n" -X POST "$URL/v1/metrics" \
-  ${AUTH[@]+"${AUTH[@]}"} \
-  -H 'Content-Type: application/json' \
-  --data @- <<JSON
+post /v1/metrics <<JSON
 { "resourceMetrics": [ { "resource": { "attributes": [
   { "key": "service.name", "value": { "stringValue": "synthetic-verify" } } ] },
   "scopeMetrics": [ { "metrics": [ {
@@ -70,10 +80,7 @@ curl -s -o /dev/null -w "  http %{http_code}\n" -X POST "$URL/v1/metrics" \
 JSON
 
 echo "== POST /v1/logs =="
-curl -s -o /dev/null -w "  http %{http_code}\n" -X POST "$URL/v1/logs" \
-  ${AUTH[@]+"${AUTH[@]}"} \
-  -H 'Content-Type: application/json' \
-  --data @- <<JSON
+post /v1/logs <<JSON
 { "resourceLogs": [ { "resource": { "attributes": [
   { "key": "service.name", "value": { "stringValue": "synthetic-verify" } } ] },
   "scopeLogs": [ { "logRecords": [ {
@@ -82,7 +89,7 @@ curl -s -o /dev/null -w "  http %{http_code}\n" -X POST "$URL/v1/logs" \
 JSON
 
 echo
-echo "Now watch the collector receive + redact it:"
-echo "  fly logs -a fleet-otel-collector"
-echo "Expect the span 'chat anthropic' with gen_ai.usage.* present and"
-echo "gen_ai.prompt.0.content ABSENT (redaction proven)."
+echo "Watch the collector receive + redact it:  fly logs -a fleet-otel-collector"
+echo "Expect span 'chat anthropic' with gen_ai.usage.* present, gen_ai.prompt.0.content ABSENT."
+[ "$FAIL" -eq 0 ] || { echo; echo "FAIL: at least one signal was not accepted (non-2xx)."; }
+exit "$FAIL"
