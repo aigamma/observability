@@ -20,10 +20,31 @@ Raw, verbatim findings: [`foundation-review-findings.json`](foundation-review-fi
    and the same doc (line ~196) say is closed. Fix: caption it deferred-until-RUM-onboarding.
 4.–7. Additional instrumentation-consistency and doc-rot items — see the raw JSON.
 
-## NOT covered (rate-limited — needs a re-run)
-Collector correctness/robustness, security hardening, cost-model + dashboard cross-checks,
-and the cross-cutting synthesis. **Re-run as ≤6 sequential/pipelined dimension agents, not 25
-parallel**, so the back half isn't throttled. (Lesson logged: cap review fan-out concurrency.)
+## Technical review — completed via one focused agent (collector / security / cost-model)
+- **COST-MODEL P1 [FIXED] — token & calls dashboard panels were dead.** Emitters set
+  `unit:'token'`/`'call'`, so OTLP→Prometheus appended the unit → `gen_ai_usage_input_tokens_token_total`,
+  which the dashboard's `..._tokens_total` never matched (cost panels survived by a dedup coincidence).
+  Fixed: dropped the unit on the token/call counters in **all four** emitters. ⚠️ aigamma + worldthought
+  must **redeploy** for it to take effect on the live series.
+- **COST-MODEL P2 [FIXED] — synthetic canary invisible to the dashboard:** its metric datapoint lacked
+  `deployment.environment` (which every panel filters on). Added it.
+- **SECURITY P1 [DEFERRED] — redaction is trace-only.** No `log_statements` in `govern`, so prompt/PII in
+  LOGS (incl. the Faro→Loki bridge) leaves un-redacted, and the `detailed` debug exporter dumps those
+  bodies to `fly logs`. Fix: add a `log_statements` block mirroring the trace deletes; drop debug verbosity.
+- **COLLECTOR P1 [DEFERRED] — no egress durability:** the otlphttp exporter has no `sending_queue` +
+  `file_storage`, so a Cloud outage or machine-suspend silently drops telemetry.
+- **SECURITY P1 [DEFERRED] — no ingest rate-limiting:** bearer gates *who*, nothing gates *how much* — a
+  compromised/shared-bearer holder can flood paid ingest. Add a request-size / rate cap.
+- **SECURITY P2 [DEFERRED] — one shared ingest bearer fleet-wide:** no per-sender identity (service.name is
+  self-asserted), rotation needs a coordinated redeploy. Move to per-site bearers.
+- **COLLECTOR P2 [DEFERRED] — memory_limiter 180+40MiB on a 256MB box** is tight (OOM risk); remove the
+  debug exporter + `--stability.level=experimental` post-verification.
+- **Solid, no defects:** pipeline topology, tail-sampling, bearer-on-both-receivers, the cardinality
+  key-regex, the closed Faro port.
+
+These DEFERRED items are the co-strategy backlog: redaction-for-logs + egress durability + ingest
+rate-limiting + per-site identity are the hardening that turns this from "works for me" into "safe at fleet
+scale." Re-run any future review as ≤6 sequential agents (the 25-way fan-out rate-limited itself).
 
 ## For co-strategy (when Eric's back)
 - The recurring **doc-rot** pattern (free→Pro, no-auth→bearer, Faro-open→closed) shows the

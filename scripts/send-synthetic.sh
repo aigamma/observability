@@ -76,7 +76,8 @@ post /v1/metrics <<JSON
       "asDouble": 0.0024, "timeUnixNano": "$NOW_NS",
       "attributes": [
         { "key": "gen_ai.request.model", "value": { "stringValue": "claude-haiku-4-5" } },
-        { "key": "service.name", "value": { "stringValue": "synthetic-verify" } } ] } ] } } ] } ] } ] }
+        { "key": "service.name", "value": { "stringValue": "synthetic-verify" } },
+        { "key": "deployment.environment", "value": { "stringValue": "verify" } } ] } ] } } ] } ] } ] }
 JSON
 
 echo "== POST /v1/logs =="
