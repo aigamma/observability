@@ -3,6 +3,18 @@
 Durable snapshot so nothing drifts if context compacts. Pairs with `HANDOFF.md`,
 `CHANGELOG.md`, `FOUNDATION-REVIEW.md`.
 
+## 2026-06-22 (evening) — new since consolidation
+- **Anthropic cap raised $200 → $250** (+~$167 credits). Real spend can now flow and be measured;
+  the bleed lands in Grafana Cloud + `fly logs` independent of any workstation (re-image-proof).
+- **Cost-leak analysis written:** `docs/COST-ANALYSIS.md` — ranked hypotheses (worldthought volume,
+  aigamma Opus unit-cost, the 15-min `narrate` fixed-cost drip), the cache-token blind spot, how to measure.
+- **Agent harness:** this repo now has an auto-loaded `CLAUDE.md` — read it first every session.
+- **Config backup (re-image safety):** `~/.claude` portable config is version-controlled at
+  `github.com/aigamma/claude-config` (private) + mirrored to `D:\Dropbox\backups\claude-config` by a
+  weekly Windows task (`ClaudeConfigWeeklyBackup`, Sun 3am). Restore anywhere: clone + `./deploy.ps1`.
+- **NEXT:** capture a `fly logs` window once `narrate` has fired and chatbots saw traffic; fill real
+  (service, model, operation) costs into COST-ANALYSIS.md; confirm/kill the ranking; act on throttling.
+
 ## All repos committed + pushed (HEAD==origin)
 - **observability** `643730e` — collector hardened + egress live; foundation review;
   token/canary/doc fixes; **log redaction deployed + live-verified**.
