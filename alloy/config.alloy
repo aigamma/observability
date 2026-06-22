@@ -113,14 +113,29 @@ otelcol.processor.attributes "tag" {
 otelcol.processor.transform "govern" {
   error_mode = "ignore"
 
+  // Strip prompt/completion text from spans before anything is exported.
   trace_statements {
     context = "span"
     statements = [
-      `delete_matching_keys(attributes, "gen_ai\\.prompt.*")`,
-      `delete_matching_keys(attributes, "gen_ai\\.completion.*")`,
-      `delete_matching_keys(attributes, "traceloop\\.entity\\.(input|output).*")`,
-      `delete_key(attributes, "gen_ai.prompt")`,
-      `delete_key(attributes, "gen_ai.completion")`,
+      `delete_matching_keys(span.attributes, "gen_ai\\.prompt.*")`,
+      `delete_matching_keys(span.attributes, "gen_ai\\.completion.*")`,
+      `delete_matching_keys(span.attributes, "traceloop\\.entity\\.(input|output).*")`,
+      `delete_key(span.attributes, "gen_ai.prompt")`,
+      `delete_key(span.attributes, "gen_ai.completion")`,
+    ]
+  }
+
+  // CARDINALITY GUARD: high-cardinality identifiers must never become metric
+  // labels — each unique value is a new billable Grafana series, and an unbounded
+  // one (a user / session / request id) is exactly how a buggy site explodes the
+  // Pro bill. Token/cost metrics stay keyed only by service / model / operation /
+  // environment. This is the metric-side half of the same governance that strips
+  // prompt text above (see docs/COST-CONTROLS.md, Layer 4d).
+  metric_statements {
+    context = "datapoint"
+    statements = [
+      `delete_matching_keys(datapoint.attributes, "(?i)^(user|enduser|end_user|session|client|peer)[._].*")`,
+      `delete_matching_keys(datapoint.attributes, "(?i)(\\.|_)(id|ip|address|uuid|email|phone)$")`,
     ]
   }
 

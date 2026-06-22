@@ -105,10 +105,13 @@ redaction every run (the secret prompt must not survive).
 ### 4d — Cardinality discipline (cost; built into the collector)
 Token/cost metrics stay keyed only by **service / model / operation / environment**.
 Prompt text, user ids, session ids, and request ids must **never** become metric
-labels — each unique value is a new billable series. The collector already strips
-prompt/completion text; a metric-attribute denylist for high-cardinality ids is the
-next guardrail in `alloy/config.alloy` (so a buggy site can't explode your series
-count = your Pro bill).
+labels — each unique value is a new billable series. The collector strips
+prompt/completion text **and** drops high-cardinality identifier keys (user /
+session / request / client ids, ips, emails) from metric labels before export —
+enforced in `alloy/config.alloy` and verified: a metric sent with `user.id`,
+`gen_ai.request.id`, `session_id`, and `client.ip` exported with only
+`service` / `model` / `operation` surviving. So a buggy site can't explode your
+series count = your Pro bill.
 
 ---
 
