@@ -5,7 +5,7 @@ Durable snapshot so nothing drifts if context compacts. Pairs with `HANDOFF.md`,
 
 ## All repos committed + pushed (HEAD==origin)
 - **observability** `643730e` — collector hardened + egress live; foundation review;
-  token/canary/doc fixes; **log redaction deployed** (verify pending).
+  token/canary/doc fixes; **log redaction deployed + live-verified**.
 - **aigamma.com** `7b51749`, **worldthought.com** `725c301` — token-panel fix, **deploying** (Netlify).
 - **ai-firehose.com** `a3bb419` — worker token fix (takes effect on next worker run).
 - **spokenhistory.org** master `655aabe` — `retrieve.mjs` instrumented (Voyage embed+rerank);
@@ -31,7 +31,8 @@ Durable snapshot so nothing drifts if context compacts. Pairs with `HANDOFF.md`,
 
 ## Pending verification / activation (Eric or data-gated)
 - Token-panel fix: confirm in Grafana once aigamma/worldthought finish deploying + data flows.
-- Log redaction: send a log carrying a `gen_ai.prompt.*` attr → confirm it's stripped.
+- Log redaction: ✓ VERIFIED — synthetic `gen_ai.prompt.0.content` stripped; only `collector.name`
+  survived on the exported log record (debug exporter, 2026-06-22).
 - spokenhistory: set Netlify env (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`=the
   ingest bearer, `OTEL_SERVICE_NAME=spokenhistory`, `DEPLOY_ENV=prod`) → redeploy → $0 verify.
 - **learnrust.ai** (Rust recipe) — not started.

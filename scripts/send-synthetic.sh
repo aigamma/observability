@@ -86,7 +86,10 @@ post /v1/logs <<JSON
   { "key": "service.name", "value": { "stringValue": "synthetic-verify" } } ] },
   "scopeLogs": [ { "logRecords": [ {
     "timeUnixNano": "$NOW_NS", "severityText": "INFO",
-    "body": { "stringValue": "synthetic verification log from send-synthetic.sh" } } ] } ] } ] }
+    "body": { "stringValue": "synthetic verification log from send-synthetic.sh" },
+    "attributes": [
+      { "key": "gen_ai.prompt.0.content", "value": { "stringValue": "SECRET-LOG-PROMPT-SHOULD-BE-REDACTED" } }
+    ] } ] } ] } ] }
 JSON
 
 echo

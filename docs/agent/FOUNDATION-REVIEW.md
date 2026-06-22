@@ -28,9 +28,11 @@ Raw, verbatim findings: [`foundation-review-findings.json`](foundation-review-fi
   must **redeploy** for it to take effect on the live series.
 - **COST-MODEL P2 [FIXED] — synthetic canary invisible to the dashboard:** its metric datapoint lacked
   `deployment.environment` (which every panel filters on). Added it.
-- **SECURITY P1 [DEFERRED] — redaction is trace-only.** No `log_statements` in `govern`, so prompt/PII in
-  LOGS (incl. the Faro→Loki bridge) leaves un-redacted, and the `detailed` debug exporter dumps those
-  bodies to `fly logs`. Fix: add a `log_statements` block mirroring the trace deletes; drop debug verbosity.
+- **SECURITY P1 [FIXED+VERIFIED] — redaction was trace-only; now covers logs.** Added a `log_statements`
+  block to `govern` mirroring the trace deletes; deployed + live-verified (a synthetic log carrying
+  `gen_ai.prompt.0.content` exported with only `collector.name` left — secret stripped). Because redaction
+  runs upstream of the debug exporter, this also closes its PII-leak; the debug *verbosity* (cost/noise,
+  not PII) remains a separate DEFERRED item.
 - **COLLECTOR P1 [DEFERRED] — no egress durability:** the otlphttp exporter has no `sending_queue` +
   `file_storage`, so a Cloud outage or machine-suspend silently drops telemetry.
 - **SECURITY P1 [DEFERRED] — no ingest rate-limiting:** bearer gates *who*, nothing gates *how much* — a
