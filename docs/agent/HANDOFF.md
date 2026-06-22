@@ -107,8 +107,12 @@ to watch the bleed in real time. He's pursuing a principal-AI-architect role; th
 is a complete, correct stack he can study.
 
 ## Next undone step
-→ Nothing blocking that is $0/safe. Remaining work is Eric's (below) or needs his OK
-  (deploy worldthought's Pinecone-reading build). Optional next agent task: a
-  settings.json PreToolUse hook that hard-blocks branch-creating git verbs (Eric wants
-  "never again" — offered, not yet built). ai-firehose/spokenhistory = raw RAG (skip);
-  selectsectors = no DNS.
+→ "Scaffold everything" continues (Eric authorized all infra spend + services-on; only the
+  Anthropic limit stays his to raise):
+  - **spokenhistory.org** — instrument (RAG + MCP); likely needs fresh otel + wiring.
+  - **learnrust.ai** — Rust on Fly; needs the Rust OTel recipe (tracing-opentelemetry),
+    different from the JS sites.
+  - Real cost from **worldthought** (chat) + **ai-firehose worker** (ingestion) lands once
+    Eric raises the Anthropic limit. selectsectors.com = no DNS yet.
+  Verify each new site $0 via direct recordLlm before any live run. Done so far this push:
+  aigamma (live), worldthought (live), ai-firehose worker (wired), global agents statusline.

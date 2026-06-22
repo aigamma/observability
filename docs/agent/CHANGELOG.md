@@ -5,6 +5,16 @@ factual (what changed, why, the verifying evidence, the commit). Newest first.
 
 ## 2026-06-22
 
+- **ai-firehose worker wired** — fixed its otel.mjs bearer auth (`f33b7593c`), staged its
+  Fly OTEL env, verified the path $0 (`ai-firehose-verify` voyage-3 metrics arrived
+  authenticated). Already well-instrumented (recordLlm in voyage.mjs + anthropic.mjs).
+  Deploy/ingestion-run deferred to the Anthropic limit-raise so the full cycle runs measured.
+- **Global agent-count status line shipped** — added an `agents` column to the user's
+  existing `~/.claude/statusline.py`, computed from VERIFIED transcript markers (background
+  `agentId:` launches minus completion notifications + synchronous Agent tool_use without a
+  result) — NOT the research subagent's hallucinated `SubagentStart`/`hook_invocation`
+  markers (not real entry types; would always show 0). Tested: 0 on the real transcript, 1
+  on a synthetic active case. Global via settings.json (all repos).
 - **worldthought.com DEPLOYED** (`66752b4`) — Eric returned, authorized all infra/build
   spend, so the `[skip ci]` hold was removed and it deployed (Netlify state=ready). Both
   prime suspects (aigamma + worldthought) now live + instrumented.
