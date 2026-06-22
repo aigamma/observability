@@ -3,7 +3,7 @@
 One centralized OpenTelemetry spine for the whole fleet: every site ships
 **metrics + traces + logs + browser RUM** to a self-hosted [Grafana Alloy]
 collector, which redacts, samples, and forwards a single OTLP/HTTP egress to
-**Grafana Cloud** (free tier). The headline surface is **LLM cost and token
+**Grafana Cloud Pro** (usage-based). The headline surface is **LLM cost and token
 observability**, so a $150 OpenAI surprise becomes a dashboard and an alert that
 warns days ahead, broken out by service, model, and operation.
 
@@ -30,7 +30,7 @@ each site's own repo, added with the copy-paste recipes in
   Browsers (React SPAs) ──Faro──┐
   Node serverless (Netlify fns) ─┤
   Node worker (Fly)            ──┤   OTLP        ┌──────────────────┐
-  Supabase Deno edge functions ──┼──(4317/4318)─▶│  Grafana Alloy   │──▶ Grafana Cloud (free)
+  Supabase Deno edge functions ──┼──(4317/4318)─▶│  Grafana Alloy   │──▶ Grafana Cloud (Pro)
   Rust services (Fly, Netlify) ──┤   + Faro      │  on a 256MB Fly  │     Mimir  metrics (13mo)
   Local LM Studio / Ollama lab ──┘   (12347)     │  machine         │     Loki   logs    (30d)
                                                  │  redact·sample·  │     Tempo  traces  (30d)
@@ -41,8 +41,10 @@ each site's own repo, added with the copy-paste recipes in
 The spine is the one piece worth self-hosting: it is the most instructive and
 most transferable part of OpenTelemetry, and it is where governance lives
 (redaction, sampling, environment tagging) for the whole fleet at once. Storage
-and dashboards are managed (Grafana Cloud free tier: 10k series, 50GB logs, 50GB
-traces, 13-month metric retention, $0), so there is no database to operate.
+and dashboards are managed (Grafana Cloud Pro, usage-based, US-East/VA), so there is
+no database to operate. Pro is deliberate — Eric does not want a free tier under
+something load-bearing, and on Pro the ingest bearer-auth and cardinality guard are
+genuine spend controls (free tier would hard-block instead, making them moot).
 
 ## The teaching frame (what the design models on purpose)
 

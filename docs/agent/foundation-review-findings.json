@@ -1,0 +1,155 @@
+{
+  "summary": "Deep multi-agent, no-branch review of the fleet observability foundation: verified findings + a prioritized refinement report Eric can study",
+  "agentCount": 25,
+  "logs": [
+    "Foundation review: 5 dimensions, read-only, no branches.",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[review:collector] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[review:costmodel] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[verify:instrumentation] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "[review:security] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited",
+    "Verified 7 real findings across 5 dimensions.",
+    "[synthesize] failed: API Error: Server is temporarily limiting requests (not your usage limit) · Rate limited"
+  ],
+  "result": {
+    "confirmedCount": 7,
+    "confirmed": [
+      {
+        "title": "Grafana Cloud tier contradicts itself across docs (free vs Pro) — inverts the core billing-risk premise",
+        "file": "D:/observability/README.md",
+        "line": "6, 44-45 (README) vs HANDOFF:9, COST-CONTROLS:16,89,114, CHANGELOG (Pro)",
+        "category": "inconsistency",
+        "severity": "P1",
+        "issue": "The README states the destination is the Grafana Cloud FREE tier four times and that the bill is $0: line 6 'Grafana Cloud (free tier)', line 33 diagram 'Grafana Cloud (free)', lines 44-45 'managed (Grafana Cloud free tier: 10k series, 50GB logs, 50GB traces, 13-month metric retention, $0), so there is no database to operate.' But every other doc says the opposite: HANDOFF.md:9 'Eric pays for Grafana Cloud Pro (US-East/VA)'; COST-CONTROLS.md:16 'Grafana Cloud Pro — usage-based. The watcher itself can bill you'; COST-CONTROLS.md:89 'on Pro it warns but keeps accruing'; COST-CONTROLS.md:114 'a buggy site can't explode your series count = your Pro bill.' This is not a cosmetic mismatch: on free tier Grafana hard-blocks at the limit (no overage), so the bearer-auth-as-'wallet lock' and the cardinality guard protect against nothing billable; on Pro they are load-bearing money controls. The reader cannot tell whether the security posture is theatre (free) or essential (Pro). The Anthropic-only flow assumption ('$0 while maxed') compounds this — the README sells a $0 story the operational docs explicitly contradict.",
+        "recommendation": "Pick the truth (HANDOFF/COST-CONTROLS strongly imply Pro, US-East/VA) and make README match: change 'free tier' / '(free)' / '$0' to the Pro reality, and either drop or re-caption the free-tier quota line. If the account genuinely is free tier, then fix COST-CONTROLS Layer 4a/4d and HANDOFF instead — but it cannot stay both.",
+        "evidence": "README.md:44 'managed (Grafana Cloud free tier: 10k series, 50GB logs, 50GB traces, 13-month metric retention, $0)' vs COST-CONTROLS.md:16 '**Grafana Cloud Pro** — usage-based. The watcher itself can bill you'",
+        "dimension": "docs",
+        "verdict": {
+          "real": true,
+          "confidence": "high",
+          "why": "Re-opened all four files and confirmed every load-bearing citation verbatim. README.md:6 \"**Grafana Cloud** (free tier)\", README.md:33 diagram \"Grafana Cloud (free)\", README.md:44-45 \"managed (Grafana Cloud free tier: 10k series, 50GB logs, 50GB traces, 13-month metric retention, $0), so there is no database to operate.\" (grep confirms 'free' appears only at README lines 6, 33, 44, and unrelated 73 SNI). Contradicting docs confirmed: docs/agent/HANDOFF.md:9 \"Eric pays for Grafana Cloud Pro (US-East/VA)\"; docs/COST-CONTROLS.md:16 \"**Grafana Cloud Pro** — usage-based. The watcher itself can bill you\"; COST-CONTROLS.md:89-90 \"On the **free** tier Grafana hard-blocks at the limit (no overage bill); on **Pro** it warns but keeps accruing\"; COST-CONTROLS.md:113-114 \"a buggy site can't explode your series count = your Pro bill.\" The finding's analytic point is independently supported by COST-CONTROLS.md:90 itself, which makes the free-vs-Pro distinction the exact dividing line between hard-block (no overage) and accrual — so the bearer-auth/cardinality money controls are theatre on free, load-bearing on Pro. README.md:112 (\"your paid Grafana Cloud usage\") and the live egress at prod-us-east-3 (HANDOFF.md:34, README.md:132) make this the real current destination, not hypothetical. Two minor inaccuracies in the finding, neither load-bearing: (1) it cites \"CHANGELOG (Pro)\" but docs/agent/CHANGELOG.md contains neither \"Pro\" nor \"free\" (grep: no matches); (2) HANDOFF.md and COST-CONTROLS.md live under docs/, not repo root, though the finding gave correct line numbers and the README path in full.",
+          "fix_effort": "trivial",
+          "safe_to_auto_apply": false
+        }
+      },
+      {
+        "title": "README 'Verify end to end' command omits the mandatory bearer, so as written it proves a 401 rejection, not success",
+        "file": "D:/observability/README.md",
+        "line": "96-104",
+        "category": "doc-inaccuracy",
+        "severity": "P1",
+        "issue": "The headline verification block runs 'COLLECTOR_URL=https://fleet-otel-collector.fly.dev scripts/send-synthetic.sh' with no ALLOY_INGEST_BEARER in the environment, then claims (lines 100-104) you 'should see the span chat anthropic with gen_ai.usage.* present and gen_ai.prompt.0.content absent, which proves the pipeline and the redaction in one shot.' But the same repo's script documents the exact opposite outcome for a tokenless run: send-synthetic.sh:9-11 'Run WITH ALLOY_INGEST_BEARER for the canary; omit it to manually prove the 401 — that run exits non-zero, which is expected, since the whole point of that run is the rejection.' With ingest auth now enforced (config.alloy:34-47, README's own Security posture lines 109-114), the README command will have every POST rejected 401, the script exits non-zero, and NOTHING reaches the debug exporter — so a returning dev running the documented command sees failure and reasonably concludes the 'verified' pipeline is broken.",
+        "recommendation": "Prefix the README verify command with 'ALLOY_INGEST_BEARER=...' (as docs/COST-CONTROLS.md:99 and the script's own usage line 14 correctly do), or add a sentence that the tokenless run is expected to 401 and a separate authed run is what proves redaction.",
+        "evidence": "README.md:97 'COLLECTOR_URL=https://fleet-otel-collector.fly.dev scripts/send-synthetic.sh' followed by README.md:102-103 'which proves the pipeline and the redaction in one shot' — contradicted by send-synthetic.sh:10-11 'omit it to manually prove the 401 — that run exits non-zero'",
+        "dimension": "docs",
+        "verdict": {
+          "real": true,
+          "confidence": "high",
+          "why": "Verified by re-opening all four cited files. README.md:97 runs `COLLECTOR_URL=https://fleet-otel-collector.fly.dev scripts/send-synthetic.sh` with NO `ALLOY_INGEST_BEARER` in the environment, then README.md:101-104 claims you 'should see the span chat anthropic with gen_ai.usage.* present and gen_ai.prompt.0.content absent, which proves the pipeline and the redaction in one shot.' send-synthetic.sh:9-11 documents the opposite for a tokenless run: 'omit it to manually prove the 401 — that run exits non-zero, which is expected, since the whole point of that run is the rejection.' The script confirms this mechanically: AUTH header is set only if ALLOY_INGEST_BEARER is non-empty (lines 22-25), post() flags non-2xx as FAIL (line 44), and it exits non-zero (line 95). Ingest auth is enforced on BOTH receivers — config.alloy:34-36 defines otelcol.auth.bearer 'ingest' and lines 42 & 46 attach `auth = otelcol.auth.bearer.ingest.handler` to the gRPC and HTTP endpoints — so every tokenless HTTP POST to /v1/traces, /v1/metrics, /v1/logs is rejected 401 before reaching the pipeline. README's own Security posture (lines 109-114) and the Fleet status row (line 132) both state ingest is bearer-enforced (401 without token / 200 with). The correct authed invocation is documented at docs/COST-CONTROLS.md:99 ('with ALLOY_INGEST_BEARER set') and the script's usage line 14. So the README headline verify command, run as written, makes every POST 401, the script exits non-zero, nothing reaches the debug exporter, and the surrounding 'proves the pipeline and redaction' text is contradicted — a returning dev sees failure on the documented happy-path command.",
+          "fix_effort": "small",
+          "safe_to_auto_apply": false
+        }
+      },
+      {
+        "title": "ONBOARDING gives a Faro RUM browser URL on a port the same doc + fly.toml say is closed",
+        "file": "D:/observability/docs/ONBOARDING.md",
+        "line": "19",
+        "category": "doc-inaccuracy",
+        "severity": "P1",
+        "issue": "The collector-endpoints table presents a live-looking browser endpoint: '| Faro RUM (browsers) | https://fleet-otel-collector.fly.dev:12347/collect |'. But port 12347 is NOT publicly routed — fly.toml:56-61 has the entire 12347 service block commented out, and the same ONBOARDING doc later (line 196) states 'The browser/Faro port (12347) is not publicly routed (fly.toml)', and README.md:116-118 says the route 'is closed (fly.toml) until the first browser app onboards.' A returning dev wiring a SPA per the Browser/React recipe would set VITE_FARO_URL to that table value and get connection-refused, with no inline warning at the point of use. The table is the first thing a reader copies.",
+        "recommendation": "Mark the Faro RUM row as 'not yet exposed — see Hardening below' (or remove the concrete URL until the port is opened), so the only browser URL in the doc isn't a dead endpoint that contradicts the doc's own hardening section.",
+        "evidence": "ONBOARDING.md:19 '| Faro RUM (browsers) | `https://fleet-otel-collector.fly.dev:12347/collect` |' vs ONBOARDING.md:196 'The browser/Faro port (`12347`) is not publicly routed (`fly.toml`)' and fly.toml:56 '# [[services]]' (commented out)",
+        "dimension": "docs",
+        "verdict": {
+          "real": true,
+          "confidence": "high",
+          "why": "Re-opened all four cited files and confirmed line-by-line. ONBOARDING.md:19 is a verbatim match: `| Faro RUM (browsers) | `https://fleet-otel-collector.fly.dev:12347/collect` |`, sitting in the collector-endpoints table (header at lines 16-17). fly.toml:56-61 has the entire 12347 `[[services]]` block commented out, with lines 52-55 stating Faro RUM is \"intentionally NOT exposed publicly yet\"; only the 443/4318 block (line 27) and 4317 block (line 45) are live services. ONBOARDING.md:196 states \"The browser/Faro port (`12347`) is not publicly routed (`fly.toml`)\". README.md:117-118 states the \"public `12347` route is closed (`fly.toml`) until the first browser app onboards.\" I also read the Browser/React recipe (ONBOARDING.md:112-134): it wires `const url = import.meta.env.VITE_FARO_URL` (line 122) with no inline warning, so a dev copying the table URL into VITE_FARO_URL would hit connection-refused. The doc thus contradicts itself (line 19 vs line 196) and contradicts fly.toml. The 12347 grep over the doc returns only lines 19 and 196, so line 19 is the only place a concrete browser URL is offered for copying, with no caveat at the point of use.",
+          "fix_effort": "trivial",
+          "safe_to_auto_apply": false
+        }
+      },
+      {
+        "title": "OTLP/gRPC 4317 receiver is bearer-authed in config but the 4317 Fly service has NO health check and is asserted 'verified' though README calls HTTP the only verified path",
+        "file": "D:/observability/fly.toml",
+        "line": "44-50",
+        "category": "inconsistency",
+        "severity": "P2",
+        "issue": "The architecture diagram (README.md:33) and config (config.alloy:39-47) advertise OTLP ingest on 4317/4318, and HANDOFF/README claim the collector is 'LIVE + hardened' end to end. fly.toml exposes 4317 publicly (lines 44-50) but with no tcp_check (only the 4318 service has one, lines 40-42) and the inline comment at fly.toml:26 explicitly scopes the verification to HTTP: 'OTLP / HTTP: the primary, verified ingest path.' No doc states whether 4317/gRPC was ever exercised; the synthetic canary (send-synthetic.sh) only POSTs to /v1/... over HTTP. So 'gRPC ingest' is presented as part of a verified surface that the evidence only covers for HTTP. Minor, but a returning dev pointing a gRPC exporter at 4317 has no confirmation it works and no health check guarding the machine on that port.",
+        "recommendation": "Either note in README/HANDOFF that only the OTLP/HTTP path is verified (gRPC is configured-but-untested), or add a gRPC probe to the canary; consider adding a check to the 4317 service block for parity.",
+        "evidence": "fly.toml:26 'OTLP / HTTP: the primary, verified ingest path.' alongside fly.toml:44-50 (4317 service, no '[[services.tcp_checks]]') while README.md:33 diagram shows '(4317/4318)' as ingest",
+        "dimension": "docs",
+        "verdict": {
+          "real": true,
+          "confidence": "high",
+          "why": "Verified line-by-line against the actual files. fly.toml:44-50 is the 4317 \"OTLP / gRPC ingest\" service block: protocol tcp, internal_port 4317, one [[services.ports]] port=4317 handlers=[\"tls\"], and NO [[services.tcp_checks]] (the block ends at line 50; the Faro comment starts at 52). By contrast the 4318 service (lines 27-42) DOES have [[services.tcp_checks]] at lines 40-42 — exactly as the finding states. fly.toml:26 reads verbatim \"# OTLP / HTTP: the primary, verified ingest path. Public on 443 and 4318 with TLS.\" The gRPC receiver IS bearer-authed: alloy/config.alloy:40-43 grpc{} has auth = otelcol.auth.bearer.ingest.handler. README.md:33 diagram shows \"(4317/4318)\" as the ingest. scripts/send-synthetic.sh is HTTP-only: its post() (lines 39-45) curls -X POST to /v1/traces, /v1/metrics, /v1/logs; header at line 1 says \"over OTLP/HTTP\"; no gRPC anywhere. README \"Fleet status\" (line 132) and HANDOFF.md:30 assert the collector \"Live & verified\" / \"LIVE + hardened\" with \"bearer-authed OTLP ingest (401 without token / 200 with)\" — all HTTP semantics. An exhaustive grep for 4317/grpc across the whole repo returns only the README diagram, fly.toml exposure, Dockerfile EXPOSE, and config.alloy receiver/comment — zero verification of the gRPC path; docs/ has no 4317/grpc/4318 mention at all. So gRPC is configured-but-untested yet folded into a surface advertised as verified. One metadata nit: the finding's prose cites \"config.alloy:39-47\" but the file actually lives at alloy/config.alloy (not repo root); the primary file/line (fly.toml:44-50) and the quoted content are all correct.",
+          "fix_effort": "small",
+          "safe_to_auto_apply": false
+        }
+      },
+      {
+        "title": "HANDOFF/CHANGELOG cite egress region 'prod-us-east-3' as the verified zone, but nothing in the repo corroborates the zone and the only committed example uses us-east-0",
+        "file": "D:/observability/docs/agent/HANDOFF.md",
+        "line": "34 (HANDOFF), 32 (CHANGELOG), 132 (README)",
+        "category": "doc-inaccuracy",
+        "severity": "P2",
+        "issue": "Three docs assert egress was verified to Grafana Cloud zone 'prod-us-east-3' (HANDOFF.md:34, CHANGELOG.md:32, README.md:132). This zone string lives nowhere checkable in the repo — the endpoint is a Fly secret (GRAFANA_CLOUD_OTLP_ENDPOINT), fly.toml:18 ships the placeholder 'http://127.0.0.1:4999', and the only concrete example region in version control is '.env.example:6 prod-us-east-0'. The provenance offered for the claim is 'Grafana emailed that metrics are live' (HANDOFF.md:34-35) — narrator-dependent, not an artifact a returning dev can re-anchor. It may well be correct, but as written it is an unverifiable assertion dressed as a verified fact, and the mismatch with the committed us-east-0 example invites doubt about which is real.",
+        "recommendation": "Either point to a checkable artifact (the actual configured secret value, or a redacted 'fly secrets list' digest/timestamp), or soften to 'egress configured to a us-east zone; success inferred from Grafana's metrics-live email' so the claim's epistemic strength matches its evidence. Align the .env.example region comment if us-east-3 is the truth.",
+        "evidence": "HANDOFF.md:34 'Egress to Grafana Cloud `prod-us-east-3` verified end-to-end (Grafana emailed that metrics are live)' vs .env.example:6 'https://otlp-gateway-prod-us-east-0.grafana.net/otlp' and fly.toml:18 'GRAFANA_CLOUD_OTLP_ENDPOINT = \"http://127.0.0.1:4999\"'",
+        "dimension": "docs",
+        "verdict": {
+          "real": true,
+          "confidence": "high",
+          "why": "All three doc lines confirmed verbatim: HANDOFF.md:34 (\"Egress to Grafana Cloud `prod-us-east-3` verified end-to-end (Grafana emailed\"), docs/agent/CHANGELOG.md:32 (the finding mislabels its path as repo-root CHANGELOG.md), and README.md:132. fly.toml:18 placeholder `http://127.0.0.1:4999` and .env.example:6 illustrative `prod-us-east-0` both confirmed; real endpoint is a Fly secret via sys.env in alloy/config.alloy:193. Provenance (\"Grafana emailed that metrics are live\", HANDOFF.md:34-35, CHANGELOG.md:32-33) is narrator-dependent with no checkable artifact — that core is valid. BUT the finding's claim that the zone \"lives nowhere checkable in the repo\" is FALSE: scripts/grafana-usage-check.sh:20 and :26 both contain `prometheus-prod-XX-us-east-3.grafana.net`, so us-east-3 recurs in version control. And .env.example:6 is a self-labeled example (\"Looks like:\"), not a competing committed fact, so the \"mismatch ... invites doubt\" framing is overstated. git 336cfee just restates the same author's prose, not independent corroboration.",
+          "fix_effort": "trivial",
+          "safe_to_auto_apply": false
+        }
+      },
+      {
+        "title": "README architecture diagram lists Rust and Supabase/Deno as Faro RUM senders, but Faro is browser-only",
+        "file": "D:/observability/README.md",
+        "line": "30-38",
+        "category": "doc-inaccuracy",
+        "severity": "P2",
+        "issue": "The diagram's '+ Faro (12347)' annotation spans the whole left brace, visually attaching Faro to every source including 'Node serverless', 'Node worker (Fly)', 'Supabase Deno edge functions', and 'Rust services'. Faro is Grafana's browser RUM SDK; ONBOARDING.md correctly scopes it to 'Browser / React' only (lines 112-131) and routes all backends through OTLP. config.alloy:58 'faro.receiver \"rum\"' comment also says 'Browsers speak Faro'. The diagram conflates the two ingest formats, implying backends can/should push Faro. It's a teaching artifact a newcomer studies first, so the imprecision mis-teaches which transport each runtime uses.",
+        "recommendation": "Redraw so 'Faro (12347)' attaches only to the 'Browsers (React SPAs)' row and 'OTLP (4317/4318)' to the backend rows, matching the per-runtime split the rest of the docs get right.",
+        "evidence": "README.md:30-35 diagram shows 'Rust services (Fly, Netlify) ──┤   + Faro' and 'Supabase Deno edge functions ──┼ ... (12347)' grouping Faro with backends, vs config.alloy:57 'Browsers speak Faro (Grafana's RUM wire format)'",
+        "dimension": "docs",
+        "verdict": {
+          "real": true,
+          "confidence": "high",
+          "why": "Re-opened D:/observability/README.md lines 29-39 and decoded the box-drawing bytes via `awk ... | cat -A`. All six source rows (Browsers L30 `──Faro──┐`, Node serverless L31 `─┤`, Node worker L32 `──┤`, Supabase Deno L33 `──┼`, Rust L34 `──┤`, Local LM Studio L35 `──┘`) collapse into ONE vertical brace, and BOTH labels `OTLP (4317/4318)` (L32-33) and `+ Faro (12347)` (L34-35) annotate that single merged brace — so Faro is visually attached to every source, including the Rust and Supabase Deno backend rows, exactly as the finding states. Cross-checked the contradicting sources: alloy/config.alloy L56-58 comment 'Browsers speak Faro ... faro.receiver \"rum\"' (finding cited config.alloy:57, off by ~1 and missing the alloy/ prefix) and docs/ONBOARDING.md L112 'Browser / React (Grafana Faro RUM)' is the sole Faro section while Rust (L138) and Node route via OTLP (finding's 112-131 range is exact; path missing docs/ prefix). The only mitigating detail is the inline `──Faro──` on L30 hinting Faro starts at browsers, but the brace-level annotation still conflates the two transports for a newcomer. Substance fully confirmed; only the cited helper-file paths drop their docs//alloy/ directory prefixes.",
+          "fix_effort": "trivial",
+          "safe_to_auto_apply": false
+        }
+      },
+      {
+        "title": "Fleet status table links PRs as the durable artifact, but the no-branch/no-PR mandate means production state is on main — table conflates 'PR open' with 'live'",
+        "file": "D:/observability/README.md",
+        "line": "133-141",
+        "category": "inconsistency",
+        "severity": "P2",
+        "issue": "The Fleet status table reports site state via open pull requests (aigamma 'PR #1', worldthought 'PR #2', ai-firehose 'PR #1 (CI green)'). HANDOFF.md:92-100 and CHANGELOG.md tell a different, later story: those branches were consolidated to linear main and DELETED local+remote (e.g. CHANGELOG.md:40-47 'consolidated observability+site-quality into a single linear main (both branches deleted local+remote)'; HANDOFF.md:99 worldthought 'DEPLOYED'). So the README still advertises PRs that the operational record says were collapsed away, and labels worldthought as merely 'Chat instrumented, PR #2' though HANDOFF/CHANGELOG mark it deployed. A returning dev reading the README's status table gets a snapshot that the agent docs already superseded — and the PR links may now be 404/closed. This also sits awkwardly against the repo's own no-PR working model.",
+        "recommendation": "Refresh the Fleet status table from HANDOFF's 'Done this session' (aigamma live+instrumented, worldthought deployed, ai-firehose worker wired) and drop or annotate the PR links as historical, so the README's headline status matches the agent log rather than contradicting it.",
+        "evidence": "README.md:135 '| worldthought.com | Netlify fns + React | Chat instrumented, [PR #2](...) |' vs HANDOFF.md:97-99 'worldthought.com — instrumented on linear `main` (zero branches) ... **DEPLOYED** (`66752b4`, Netlify state=ready)'",
+        "dimension": "docs",
+        "verdict": {
+          "real": true,
+          "confidence": "high",
+          "why": "Re-opened D:/observability/README.md and confirmed the Fleet status table (lines 130-141) verbatim: line 133 ai-firehose \"[PR #1](...) (CI green)\", line 134 aigamma \"Chat instrumented, [PR #1](...)\", line 135 \"| worldthought.com | Netlify fns + React | Chat instrumented, [PR #2](...) |\" — the table presents open PRs as the state. The cross-referenced files exist at docs/agent/ (the finding's file paths \"HANDOFF.md\"/\"CHANGELOG.md\" omit that prefix, but line numbers are correct): docs/agent/HANDOFF.md:96-99 marks worldthought \"instrumented on linear main (zero branches)... **DEPLOYED** (66752b4, Netlify state=ready)\" and :92-94 marks aigamma \"LIVE + instrumented... deployed (state=ready, HTTP 200)\"; docs/agent/CHANGELOG.md:40-41 \"consolidated observability+site-quality into a single linear main (both branches deleted local+remote)\" and :49-58 same for worldthought (\"deleted observability + already-merged june-2026-expansion, local+remote\"); CHANGELOG.md:18-20 \"worldthought.com DEPLOYED (66752b4)\". The no-PR mandate is explicit at HANDOFF.md:20-21 (\"No branches, ever... never a PR\"). So the README advertises PRs whose branches the operational record says were merged-to-main-and-deleted, understates worldthought/aigamma as instrumented-only when the agent log marks them deployed/live, and conflicts with the repo's own no-PR model. The \"links may now be 404/closed\" is hedged inference (could not reach GitHub), not a fabricated claim.",
+          "fix_effort": "small",
+          "safe_to_auto_apply": false
+        }
+      }
+    ],
+    "report": null
+  }
+}
