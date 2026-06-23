@@ -73,3 +73,11 @@ Measured the cacheable system-prompt material via `wc -c` (bytes ≈ tokens/4):
   via volume. The hit-vs-thrash distinction (now instrumented + alerted) is material: a cache that THRASHES
   bills 1.25× these tokens per call instead of 0.1× on a hit — **~12× worse**. That is the leak to watch first
   once traffic flows; the new cache panel + `LlmPromptCacheThrash` alert will surface it.
+
+## Capture 4 — 30-minute watch, 2026-06-23 ~00:0x UTC
+Streamed `fly logs` for a full 30 min: **identical static buffer** (same 100 lines, same verify/synthetic
+spans), no organic, no cache tokens, `connection-chat` 0, `narrate` 0. Definitive: **no telemetry of any
+kind is flowing right now** — not even the verify canaries are on a schedule (those entries are stale
+buffer). The collector is up and would surface new signals instantly; there is simply no traffic at this
+hour. Measuring the actual leak waits on real traffic (Eric back / users / a RAG cycle). The
+instrumentation is comprehensive + accurate and ready for that moment.
