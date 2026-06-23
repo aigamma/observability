@@ -41,3 +41,15 @@ tokens yet (deploys still propagating + no chatbot users at this hour). Pipeline
 simply isn't flowing this minute (Eric expected this — "maybe we'd have to wait for a RAG cycle").
 **Watch item:** `narrate` (the 15-min cron) reads 0 across two windows — confirm it's actually firing
 once organic data appears (cold cron vs. buffer scroll). Re-capture later for organic spend.
+
+## Instrumentation coverage audit — 2026-06-22 evening
+Grep of every Anthropic/Voyage call site vs. `recordLlm` across the active repos:
+- ✅ **All live Anthropic (the expensive paths) are instrumented:** aigamma `chat` + `narrate`,
+  worldthought `chat` + `connection-chat` (just fixed), ai-firehose worker `anthropic`. No invisible
+  Claude spend remains.
+- ⚠️ **Query-time Voyage embeds uninstrumented** in worldthought `chat.mjs` + `connection-chat.mjs`
+  (RAG retrieval). Negligible (~$0.000006/query) — documented, not worth wiring.
+- ⚠️ **RAG scripts** (`aigamma scripts/rag/reembed.mjs`, `worldthought scripts/rag/ingest.mjs`) embed the
+  whole corpus via Voyage with no telemetry. Manual/offline, but this is the "re-embedding loop" cost
+  vector — instrument if they ever move to a schedule.
+- **Net: the dashboard now captures all live Claude spend; the only gaps are cheap or manual.**
