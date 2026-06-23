@@ -116,6 +116,37 @@
         { "refId": "Spend", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "format": "table", "instant": true,
           "legendFormat": "usd", "expr": "sum by (service_name) (increase(gen_ai_cost_usd_total{deployment_environment=\"$env\"}[$__range]))" }
       ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Prompt cache: tokens/sec (read vs creation vs uncached input)",
+      "description": "Is caching working? Lots of READ (billed 0.1x) vs CREATION (1.25x) = healthy reuse of the static prompt prefix. High CREATION or high uncached INPUT = the cache is thrashing or cold, i.e. the fixable leak. Empty until a cache-instrumented service (aigamma/worldthought chat) sees traffic.",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 21 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "legendFormat": "cache read (0.1x)",
+          "expr": "sum(rate(gen_ai_usage_cache_read_tokens_total{deployment_environment=\"$env\"}[5m]))" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "legendFormat": "cache creation (1.25x)",
+          "expr": "sum(rate(gen_ai_usage_cache_creation_tokens_total{deployment_environment=\"$env\"}[5m]))" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "${datasource}" }, "legendFormat": "uncached input (1x)",
+          "expr": "sum(rate(gen_ai_usage_input_tokens_total{deployment_environment=\"$env\"}[5m]))" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Cache hit ratio (range)",
+      "description": "cache_read / (cache_read + cache_creation + uncached_input). High = the static prefix is being reused across turns; low = paying near-full price for repeated context (the leak). 0 if nothing caches.",
+      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 21 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 1, "min": 0, "max": 1 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(increase(gen_ai_usage_cache_read_tokens_total{deployment_environment=\"$env\"}[$__range])) / clamp_min(sum(increase(gen_ai_usage_cache_read_tokens_total{deployment_environment=\"$env\"}[$__range])) + sum(increase(gen_ai_usage_cache_creation_tokens_total{deployment_environment=\"$env\"}[$__range])) + sum(increase(gen_ai_usage_input_tokens_total{deployment_environment=\"$env\"}[$__range])), 1)" }
+      ]
     }
   ]
 }

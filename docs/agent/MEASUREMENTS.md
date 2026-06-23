@@ -24,3 +24,20 @@ Eric reopened the Anthropic spigot ~2026-06-22 23:00 UTC; organic spend accumula
   the two and turns "is the cache even working?" into a number.
 - **Fix (implementing now):** capture both cache fields in `recordLlm`, fold them into `costUsd` (write 1.25× / read
   0.1× of base input price), emit `cache_read` / `cache_creation` counters, and add a cache panel.
+
+## 2026-06-22 evening — what I built (Eric on a bike ride)
+- **Cache fix DONE + deployed:** aigamma (`e8ccf4e`) + worldthought (`65ef01f`) chat now capture
+  `cache_read`/`cache_creation` from `message_start`, price them in `costUsd` (write 1.25× / read 0.1×),
+  and emit `cache_read_tokens` / `cache_creation_tokens` counters. Cost math unit-tested (PASS).
+- **Dashboard:** added panels 7 (cache tokens/sec: read vs creation vs uncached input) + 8 (cache
+  hit-ratio stat) to `dashboards/llm-cost.json`.
+- **NEW blind spot found + fixed:** worldthought `connection-chat.mjs` — the /connections Sonnet
+  synthesis modal (64k output, doubled RAG) — raw-forwarded its SSE and recorded **nothing**: a fully
+  invisible Sonnet spend path. Instrumented additively (`b260458`); now emits `operation=connection-chat`.
+
+## Capture 2 — 2026-06-22 ~23:30 UTC (150 s)
+Still **no organic traffic** — only the synthetic/verify canaries again; `narrate` count **0**; no cache
+tokens yet (deploys still propagating + no chatbot users at this hour). Pipeline healthy; the bleed
+simply isn't flowing this minute (Eric expected this — "maybe we'd have to wait for a RAG cycle").
+**Watch item:** `narrate` (the 15-min cron) reads 0 across two windows — confirm it's actually firing
+once organic data appears (cold cron vs. buffer scroll). Re-capture later for organic spend.

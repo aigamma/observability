@@ -55,10 +55,11 @@ panels). Data flows from Netlify/Fly regardless of this workstation, so a re-ima
 interrupt accumulation.
 
 ## Stack improvements surfaced while framing this
-1. **Instrument cache tokens** (`cache_read` / `cache_creation`) in `recordLlm`, plus a cache-hit-rate panel — without it the biggest lever is blind. *(highest value)*
+1. ✅ **Instrument cache tokens — DONE 2026-06-22.** `recordLlm` now captures `cache_read`/`cache_creation`, prices them (write 1.25× / read 0.1×), and emits counters; dashboard panels 7–8 (cache tokens/sec + hit-ratio) added. Live on aigamma + worldthought `chat` + `connection-chat`. *(was the biggest blind lever; the dashboard will now reconcile with the Anthropic invoice)*
 2. **Per-bot attribution vs cardinality.** Finding the idle-expensive worldthought tail wants per-`chatbot_id` cost — but 2,200 IDs × models as labels would explode billable series (the cardinality guard rightly drops IDs). Resolve with sampled exemplars or a periodic top-N rollup, **not** a label per bot. This tension is the central design problem of fleet cost-attribution.
 3. **A spend-velocity alert** (`rate(gen_ai_cost_usd_total[1h])`) to catch a runaway in minutes, not after $50 has accrued (the review's alert gap).
 4. **Distinct operation names** for every scheduled job (`narrate` already is) so fixed-cost drips stay isolable from user-driven spend.
+5. ✅ **Audit for uninstrumented spend paths — one found + fixed 2026-06-22.** worldthought `connection-chat.mjs` (Sonnet, 64k output, doubled RAG) recorded nothing — a fully invisible spend path, now instrumented. Likely more exist: grep each repo for an Anthropic/Voyage `fetch` with no nearby `recordLlm`.
 
 ---
 *Next session: capture a `fly logs` window once `narrate` has fired a few times and chatbots have seen
