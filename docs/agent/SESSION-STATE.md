@@ -15,6 +15,22 @@ Durable snapshot so nothing drifts if context compacts. Pairs with `HANDOFF.md`,
 - **NEXT:** capture a `fly logs` window once `narrate` has fired and chatbots saw traffic; fill real
   (service, model, operation) costs into COST-ANALYSIS.md; confirm/kill the ranking; act on throttling.
 
+## 2026-06-22 late evening — autonomous instrumentation session (Eric biking)
+Spigot reopened; I measured and hardened while waiting for organic traffic. All committed + pushed.
+- **Cache cost blind spot — FIXED.** aigamma + worldthought `chat` use prompt caching but recorded only
+  `input_tokens`, so the dashboard *undercounted* the chatbot bill. Now capture + price `cache_read` (0.1×)
+  / `cache_creation` (1.25×), emit counters, dashboard panels 7–8 added. (`e8ccf4e`, `65ef01f`, `61dd4ac`)
+- **connection-chat Sonnet blind spot — FIXED.** worldthought's /connections modal (Sonnet, 64k, doubled
+  RAG) was wholly uninstrumented — invisible spend. Instrumented additively (no risk to the stream). (`b260458`)
+- **Coverage audit (`642ca6e`):** all live Anthropic paths now measured; only gaps are negligible Voyage
+  retrieval + manual RAG scripts.
+- **`narrate` is dormant:** not Netlify-scheduled — its external 15-min trigger is likely off, so that
+  suspected drip isn't firing.
+- **Measurement:** 3 `fly logs` captures, NO organic traffic yet (late hour; cron off). Pipeline healthy.
+  Detailed log: `docs/agent/MEASUREMENTS.md`. Cost lens: `docs/COST-ANALYSIS.md`.
+- **NEXT:** re-capture once real chatbot traffic / a RAG cycle happens — the cache panels, `connection-chat`,
+  and reconciled cost will then reveal the true leak. The instrumentation is now comprehensive and accurate.
+
 ## All repos committed + pushed (HEAD==origin)
 - **observability** `643730e` — collector hardened + egress live; foundation review;
   token/canary/doc fixes; **log redaction deployed + live-verified**.

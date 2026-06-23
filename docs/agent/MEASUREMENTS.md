@@ -53,3 +53,12 @@ Grep of every Anthropic/Voyage call site vs. `recordLlm` across the active repos
   whole corpus via Voyage with no telemetry. Manual/offline, but this is the "re-embedding loop" cost
   vector — instrument if they ever move to a schedule.
 - **Net: the dashboard now captures all live Claude spend; the only gaps are cheap or manual.**
+
+## `narrate` trigger finding — 2026-06-22
+`narrate-background.mjs` is instrumented (operation `narrate`) but reads **0** across all captures.
+Cause established: it is **not a Netlify scheduled function** — no `schedule` in `netlify.toml`, no
+`export const config = { schedule }`. Its "every 15 min" cadence is driven by an **external** trigger
+(separate cron / GitHub Action / manual). So a 0 reading most likely means that trigger is currently
+OFF (consistent with Eric having taken things down): the suspected 15-min Haiku drip is **dormant right
+now, not leaking**. **Action:** when expecting the drip, confirm the external trigger is live; once it
+is, `narrate` cost appears and the fixed-cost hypothesis (hypothesis #3 in COST-ANALYSIS) can be sized.
