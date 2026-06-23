@@ -32,8 +32,8 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Spend, month to date (USD)",
-      "description": "Sum of derived cost across the fleet over the dashboard range. Watch this against your monthly cap; the alert in alerts/ warns before it.",
+      "title": "Spend, last 30 days (USD)",
+      "description": "Sum of derived cost across the fleet over the dashboard range (default = trailing 30 days, NOT calendar month-to-date — the provider cap resets on the 1st, so these diverge mid-month). Watch against the monthly cap; the alerts in alerts/ warn before it.",
       "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
