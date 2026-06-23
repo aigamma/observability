@@ -30,6 +30,9 @@ Spigot reopened; I measured and hardened while waiting for organic traffic. All 
   Detailed log: `docs/agent/MEASUREMENTS.md`. Cost lens: `docs/COST-ANALYSIS.md`.
 - **NEXT:** re-capture once real chatbot traffic / a RAG cycle happens — the cache panels, `connection-chat`,
   and reconciled cost will then reveal the true leak. The instrumentation is now comprehensive and accurate.
+- **Fleet coverage COMPLETE:** spokenhistory activated (`f3de03a` — Netlify linked, OTEL env set for the
+  production context, redeployed). All five services (aigamma, worldthought, ai-firehose, spokenhistory)
+  plus the collector are now instrumented AND live. Nothing is left dark.
 
 ## All repos committed + pushed (HEAD==origin)
 - **observability** `643730e` — collector hardened + egress live; foundation review;
