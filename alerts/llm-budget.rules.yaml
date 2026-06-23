@@ -26,3 +26,28 @@ groups:
         annotations:
           summary: "{{ $labels.service_name }} spent over $50 in 7 days"
           description: "Check whether this is expected high-signal use or a leak (oversized prompts, missing cache, re-embedding unchanged content)."
+
+      # VELOCITY: the two alerts above are cumulative — they only fire once real money is
+      # spent. This fires on the RATE of spend, catching a sudden runaway in ~10 minutes
+      # instead of after $50 has already burned. $5/hr sustained is ~$120/mo from one source.
+      - alert: LlmSpendVelocitySpike
+        expr: sum(rate(gen_ai_cost_usd_total[15m])) * 3600 > 5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fleet LLM spend rate over $5/hour (sustained 10m)"
+          description: "Something is burning fast — open the dashboard's hourly-spend-by-service + top-operations panels to name it before the cap. A re-embedding loop or runaway agent looks like this."
+
+      # CACHE THRASH: now that cache tokens are instrumented, catch the prompt cache being
+      # repeatedly RE-CREATED (billed 1.25x) instead of READ (0.1x) — i.e. the static prefix
+      # is churning (a per-request value slipped above the cache_control breakpoint). Volume
+      # floor + a long 'for' keep it quiet at low traffic. Tune thresholds once cache data flows.
+      - alert: LlmPromptCacheThrash
+        expr: sum(rate(gen_ai_usage_cache_creation_tokens_total[1h])) > 2 * sum(rate(gen_ai_usage_cache_read_tokens_total[1h])) and sum(rate(gen_ai_usage_cache_creation_tokens_total[1h])) > 50
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prompt cache is thrashing (creating >2x what it reads)"
+          description: "The cache is paying the 1.25x write price repeatedly instead of the 0.1x read. Confirm the cached prefix is stable across turns (no per-request data above the cache_control breakpoint)."
