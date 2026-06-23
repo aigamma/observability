@@ -62,3 +62,14 @@ Cause established: it is **not a Netlify scheduled function** — no `schedule` 
 OFF (consistent with Eric having taken things down): the suspected 15-min Haiku drip is **dormant right
 now, not leaking**. **Action:** when expecting the drip, confirm the external trigger is live; once it
 is, `narrate` cost appears and the fixed-cost hypothesis (hypothesis #3 in COST-ANALYSIS) can be sized.
+
+## Static cost grounding — prompt sizes (no organic traffic needed)
+Measured the cacheable system-prompt material via `wc -c` (bytes ≈ tokens/4):
+- aigamma narrator `_persona.mjs` alone = 14 KB ≈ **3,500 tokens**; the full cached prefix adds site-nav +
+  site-index, so aigamma's per-call cached prefix is **several thousand tokens**.
+- worldthought: ~1.6 MB of prompt files across its ~2,200 rooms (≈ 740 B / ~185 tokens per persona);
+  per-call cached prefix ≈ shared head (~385 tokens) + one room persona — **small per call, huge in aggregate**.
+- **Implication:** caching is worth real money both ways — aigamma via large per-call prefixes, worldthought
+  via volume. The hit-vs-thrash distinction (now instrumented + alerted) is material: a cache that THRASHES
+  bills 1.25× these tokens per call instead of 0.1× on a hit — **~12× worse**. That is the leak to watch first
+  once traffic flows; the new cache panel + `LlmPromptCacheThrash` alert will surface it.
