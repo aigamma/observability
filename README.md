@@ -140,7 +140,7 @@ worker, Browser/Faro, Rust, Supabase/Deno, Python) are in
 | worldthought.com | Netlify fns + React | Chat instrumented, [PR #2](https://github.com/aigamma/worldthought.com/pull/2) |
 | learnrust.ai | Rust on Fly | Pending (RED + runtime via tracing-opentelemetry) |
 | selectsectors.com | Rust + Netlify | Pending |
-| spokenhistory.org | Netlify fns + RAG + MCP | Cloned; pending |
+| spokenhistory.org | Netlify fns + RAG + MCP | Retrieve fn (Voyage embed + rerank) instrumented and activated 2026-06-22 |
 | leaderlogic.org / robotlogic.org | unknown | Blocked: no repo located |
 
 All four services above (worker, aigamma, worldthought, plus the synthetic verifier) have had real telemetry confirmed arriving at the collector with correct `gen_ai.*` attributes and cost. **As of 2026-06-22 the Grafana Cloud egress is live and verified** — a synthetic trace flows ingest → redact → export with the exporter reporting no errors (the prior `127.0.0.1:4999` connection-refused retries are gone). Remaining: confirm the data in the Grafana UI (Explore → `service.name="synthetic-verify"`), import `dashboards/llm-cost.json`, work the guardrails in [`docs/COST-CONTROLS.md`](docs/COST-CONTROLS.md), and onboard the real sites (dormant until their endpoint + bearer env vars are set).
